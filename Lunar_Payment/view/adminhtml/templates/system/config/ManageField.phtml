@@ -1,0 +1,19 @@
+<script type="text/javascript">
+
+    let PLUGIN_CODE = 'lunarpaymentmethod';
+
+    /**
+     * Show/hide specific fields based on query parameter
+     */
+    if ("?debug" !== document.location.search) {
+        jQuery(`#row_payment_us_${PLUGIN_CODE}_transaction_mode`).hide();
+        jQuery(`#row_payment_us_${PLUGIN_CODE}_test_app_key`).hide();
+        jQuery(`#row_payment_us_${PLUGIN_CODE}_test_api_key`).hide();
+
+        /** Hide live fields when test mode active - prevents misuse. */
+        if ('test' === jQuery(`#row_payment_us_${PLUGIN_CODE}_transaction_mode option:selected`).val()) {
+            jQuery(`#row_payment_us_${PLUGIN_CODE}_live_app_key`).hide();
+            jQuery(`#row_payment_us_${PLUGIN_CODE}_live_api_key`).hide();
+        }
+    }
+</script>
