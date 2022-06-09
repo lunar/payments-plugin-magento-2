@@ -1,5 +1,0 @@
-plan: false
-
-vars:
-  service: payments-plugin-magento-2
-  squad: juno

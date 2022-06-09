@@ -1,0 +1,11 @@
+{
+  "name": "lunar/lunar-magento",
+  "description": "Lunar magento2 gateway",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Ionut Calara",
+      "email": "ionut.calara@gmail.com"
+    }
+  ]
+}

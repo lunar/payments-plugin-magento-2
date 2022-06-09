@@ -1,0 +1,1 @@
+# Magento 2.* plugin for Lunar
