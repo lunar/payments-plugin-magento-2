@@ -48,6 +48,9 @@ import './commands'
     if (err.message.includes("setLocation is not defined")) {
       return false
     }
+    if (err.message.includes("locations.each is not a function")) { // added from magento 2.4.5
+      return false
+    }
 
     /**
      * TEMPORARY ADDED

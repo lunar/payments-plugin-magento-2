@@ -20,6 +20,8 @@ use Magento\Store\Model\ScopeInterface;
 
 class CheckoutAllSubmitAfterObserver implements ObserverInterface
 {
+    const PLUGIN_CODE = 'lunarpaymentmethod';
+
     /**
      * @var Logger
      */
@@ -85,67 +87,82 @@ class CheckoutAllSubmitAfterObserver implements ObserverInterface
      */
     public function execute(Observer $observer)
     {
-        $order = $observer->getEvent()->getOrder();
-        if(!isset($order)){
-         return $this;
-     }
-     $payment = $order->getPayment();
-     $methodName = $payment->getMethod();
+        $captureMode =  $this->scopeConfig->getValue('payment/' . self::PLUGIN_CODE . '/capture_mode', ScopeInterface::SCOPE_STORE);
+        $invoiceEmailMode =  $this->scopeConfig->getValue('payment/' . self::PLUGIN_CODE . '/invoice_email', ScopeInterface::SCOPE_STORE);
 
-     if ($methodName != "lunarpaymentmethod"){
+        /** Check for "order" - normal checkout flow. */
+        $order = $observer->getEvent()->getOrder();
+        /** Check for "orders" - multishipping checkout flow. */
+        $orders = $observer->getEvent()->getOrders();
+
+        if (!empty($order)) {
+            $this->processOrder($order, $captureMode, $invoiceEmailMode);
+        } elseif (!empty($orders)) {
+            foreach ($orders as $order) {
+                $this->processOrder($order, $captureMode, $invoiceEmailMode);
+            }
+        }
+
         return $this;
     }
 
-    $capturemode =  $this->scopeConfig->getValue('payment/lunarpaymentmethod/capture_mode', ScopeInterface::SCOPE_STORE);
+    /**
+     * @param Order $order
+     * @param $captureMode
+     * @param $invoiceEmailMode
+     */
+    private function processOrder(Order $order, $captureMode, $invoiceEmailMode)
+    {
+        $payment = $order->getPayment();
+        $methodName = $payment->getMethod();
 
-    if($capturemode == "instant"){
-        if(!$order->getId()) {
+        if ($methodName != self::PLUGIN_CODE) {
             return $this;
         }
 
-
-        try {
-            $invoices = $this->invoiceCollectionFactory->create()
-            ->addAttributeToFilter('order_id', array('eq' => $order->getId()));
-            $invoices->getSelect()->limit(1);
-
-            if ((int)$invoices->count() !== 0) {
-                return null;
+        if ("instant" == $captureMode) {
+            if (!$order->getId()) {
+                return $this;
             }
 
-            if(!$order->canInvoice()) {
-                return null;
-            }
+            try {
+                $invoices = $this->invoiceCollectionFactory->create()
+                    ->addAttributeToFilter('order_id', array('eq' => $order->getId()));
+                $invoices->getSelect()->limit(1);
 
-            $invoice = $this->invoiceService->prepareInvoice($order);
-            $invoice->setRequestedCaptureCase(Invoice::CAPTURE_ONLINE);
-            $invoice->register();
-            $invoice->getOrder()->setCustomerNoteNotify(false);
-            $invoice->getOrder()->setIsInProcess(true);
-            $transactionSave = $this->transactionFactory->create()->addObject($invoice)->addObject($invoice->getOrder());
-            $transactionSave->save();
-
-            $invoiceEmailmode =  $this->scopeConfig->getValue('payment/lunarpaymentmethod/invoice_email', ScopeInterface::SCOPE_STORE);
-            if (!$invoice->getEmailSent() && $invoiceEmailmode==1) {
-                try {
-                    $this->invoiceSender->send($invoice);
-                } catch (\Exception $e) {
-                        // Do something if failed to send
+                if ((int)$invoices->count() !== 0) {
+                    return null;
                 }
+
+                if (!$order->canInvoice()) {
+                    return null;
+                }
+
+                $invoice = $this->invoiceService->prepareInvoice($order);
+                $invoice->setRequestedCaptureCase(Invoice::CAPTURE_ONLINE);
+                $invoice->register();
+                $invoice->getOrder()->setCustomerNoteNotify(false);
+                $invoice->getOrder()->setIsInProcess(true);
+                $transactionSave = $this->transactionFactory->create()->addObject($invoice)->addObject($invoice->getOrder());
+                $transactionSave->save();
+
+                if (!$invoice->getEmailSent() && $invoiceEmailMode == 1) {
+                    try {
+                        $this->invoiceSender->send($invoice);
+                    } catch (\Exception $e) {
+                        // Do something if failed to send
+                    }
+                }
+            } catch (\Exception $e) {
+                $order->addStatusHistoryComment('Exception message: ' . $e->getMessage(), false); // addStatusHistoryComment() is deprecated !
+                $order->save(); // save() is deprecated !
+                return null;
             }
-        } catch (\Exception $e) {
-            $order->addStatusHistoryComment('Exception message: '.$e->getMessage(), false);
+        }
+        else if ("delayed" == $captureMode) {
+
+            $order->setState(Order::STATE_PENDING_PAYMENT)->setStatus(Order::STATE_PENDING_PAYMENT);
             $order->save();
-            return null;
         }
     }
-
-    else if($capturemode == "delayed"){
-
-        $order->setState(Order::STATE_PENDING_PAYMENT)->setStatus(Order::STATE_PENDING_PAYMENT);
-        $order->save();
-    }
-
-    return $this;
-}
 }

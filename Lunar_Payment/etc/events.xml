@@ -13,4 +13,7 @@
     <event name="checkout_submit_all_after">
         <observer name="lunar_checkout_submit_all_after" instance="Lunar\Payment\Observer\CheckoutAllSubmitAfterObserver"/>
     </event>
+    <event name="sales_order_payment_void">
+        <observer name="paylike_sales_order_payment_void" instance="Lunar\Payment\Observer\SalesOrderPaymentVoidObserver"/>
+    </event>
 </config>
