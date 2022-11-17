@@ -26,7 +26,7 @@ use Lunar\Payment\Gateway\Http\Client\TransactionAuthorize;
  */
 class ConfigProvider implements ConfigProviderInterface {
 	const PLUGIN_CODE = 'lunarpaymentmethod';
-	const PLUGIN_VERSION = '1.0.0';
+	const PLUGIN_VERSION = '1.1.0';
 	protected $scopeConfig;
 	protected $_cart;
 	protected $_assetRepo;
