@@ -11,7 +11,7 @@
             <lunarpaymentmethod>
                 <debug>1</debug>
                 <active>0</active>
-                <model>PluginFacade</model>
+                <model>LunarPaymentFacade</model>
                 <payment_action>authorize</payment_action>
                 <order_status>pending_payment</order_status>
                 <title>Lunar</title>
@@ -25,8 +25,27 @@
                 <is_gateway>1</is_gateway>
                 <sort_order>1</sort_order>
                 <acceptedcards>visa,visaelectron,mastercard,maestro</acceptedcards>
-                <description>Secure payment with credit card via &#169; Lunar</description>
+                <description><![CDATA[Secure payment with credit card via &copy; <a href="https://lunar.app" target="_blank">Lunar</a>]]></description>
             </lunarpaymentmethod>
+
+            <lunarmobilepay>
+                <debug>1</debug>
+                <active>0</active>
+                <model>LunarMobilePayFacade</model>
+                <payment_action>authorize</payment_action>
+                <order_status>pending_payment</order_status>
+                <title>Mobile Pay</title>
+                <currency>USD</currency>
+                <can_authorize>1</can_authorize>
+                <can_capture>1</can_capture>
+                <can_void>1</can_void>
+                <can_cancel>1</can_cancel>
+                <can_refund>1</can_refund>
+                <can_use_checkout>1</can_use_checkout>
+                <is_gateway>1</is_gateway>
+                <sort_order>2</sort_order>
+                <description><![CDATA[Secure payment with MobilePay via &copy; <a href="https://lunar.app" target="_blank">Lunar</a>]]></description>
+            </lunarmobilepay>
         </payment>
         <csp>
             <mode>

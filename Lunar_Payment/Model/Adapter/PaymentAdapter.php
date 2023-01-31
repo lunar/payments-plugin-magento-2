@@ -1,15 +1,11 @@
 <?php
-/**
- * Copyright © 2013-2017 Magento, Inc. All rights reserved.
- * See COPYING.txt for license details.
- */
+
 namespace Lunar\Payment\Model\Adapter;
 
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\App\RequestInterface;
 use Magento\Sales\Model\OrderRepository;
 use Magento\Store\Model\StoreManagerInterface;
-
 use Magento\Store\Model\ScopeInterface;
 
 use Lunar\Payment\lib\Lunar\Client;
@@ -18,42 +14,31 @@ use Lunar\Payment\lib\Lunar\Transaction;
 /**
  * Class PaymentAdapter
  * @codeCoverageIgnore
- * Adapter used for capture/refund/void an order from admin panel
+ * Adapter used for capture/refund/void an order
  */
 class PaymentAdapter
 {
-	const PLUGIN_CODE = 'lunarpaymentmethod';
-
-    private $scopeConfig;
-    private $request;
-    private $orderRepository;
-    private $storeManager;
-
-    /**
-     * @param ScopeConfigInterface $scopeConfig
-     * @param RequestInterface $request
-     * @param OrderRepository $orderRepository
-     * @param StoreManagerInterface $storeManager
-     */
     public function __construct(
             ScopeConfigInterface $scopeConfig,
             RequestInterface $request,
             OrderRepository $orderRepository,
             StoreManagerInterface $storeManager
-        )
-    {
+    ){
+
         $this->scopeConfig = $scopeConfig;
         $this->request = $request;
         $this->orderRepository = $orderRepository;
         $this->storeManager = $storeManager;
 
+
         $this->setPrivateKey();
     }
+
 
     /**
      * @param string|null $value
      */
-    public function setPrivateKey()
+    private function setPrivateKey()
     {
         $transactionMode = $this->getStoreConfigValue('transaction_mode');
 
@@ -103,31 +88,38 @@ class PaymentAdapter
     /**
      * Get store config value
      *
-     * @param string $configId
+     * @param string $configField
      */
-    private function getStoreConfigValue($configId)
+    private function getStoreConfigValue($configField)
     {
-        /** FRONTEND order processing. */
+        /**
+         * Get payment method code from cart if request came from frontend.
+         * It is null iat this point n the after_order flow, but will be obtained bellow from order.
+         */
+        $paymentMethodCode = $this->getPaymentMethodFromQuote();
+
+        /** FRONTEND order processing flow. */
         $orderStoreId = $this->storeManager->getStore()->getId();
 
         /**
-         * ADMIN order processing (if order_id is present, the request is from admin)
-         *
-         * Get order Id from request.
-         * Get order by id
-         * Get store id from order
+         * ADMIN order processing flow (if order_id is present, the request is from admin)
+         * OR
+         * MOBILEPAY flow
          */
-        if ($this->request->getParam('order_id')) {
-            $orderId = $this->request->getParam('order_id');
+        if ($orderId = $this->request->getParam('order_id')) {
+
             $order = $this->orderRepository->get($orderId);
 
             $orderStoreId = $order->getStore()->getId();
+
+            $paymentMethod = $order->getPayment()->getMethod();
+            $paymentMethodCode = $paymentMethod;
         }
 
         /**
          * "path" is composed based on etc/adminhtml/system.xml as "section_id/group_id/field_id"
          */
-        $configPath = 'payment/' . self::PLUGIN_CODE . '/' . $configId;
+        $configPath = 'payment/' . $paymentMethodCode . '/' . $configField;
 
         return $this->scopeConfig->getValue(
             /*path*/ $configPath,
@@ -135,5 +127,17 @@ class PaymentAdapter
             /*scopeCode*/ $orderStoreId
         );
     }
+
+
+	/**
+	 *
+	 */
+	private function getPaymentMethodFromQuote()
+	{
+		$objectManager = \Magento\Framework\App\ObjectManager::getInstance();
+		$cart = $objectManager->get('\Magento\Checkout\Model\Cart');
+
+		return $cart->getQuote()->getPayment()->getMethod();
+	}
 
 }

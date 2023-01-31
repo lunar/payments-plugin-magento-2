@@ -1,27 +1,40 @@
 <style>
-  #lunar_logs_buttons_container {
+  #lunarpaymentmethod_logs_buttons_container {
     display: flex;
     flex-direction: row;
     justify-content: space-between;
   }
 
-  #lunar_logs_logs_message {
+  #lunarpaymentmethod_logs_logs_message {
     margin-top: 8px;
   }
 </style>
-<div id="lunar_logs_buttons_container">
-  <button id="lunar_logs_export_button" disabled>Export logs</button>
-  <button id="lunar_logs_delete_button" disabled>Delete logs</button>
+
+
+<div id="lunarpaymentmethod_logs_buttons_container">
+  <button id="lunarpaymentmethod_logs_export_button" disabled>Export logs</button>
+  <button id="lunarpaymentmethod_logs_delete_button" disabled>Delete logs</button>
 </div>
-<p id="lunar_logs_logs_message">this is a message</p>
+<p id="lunarpaymentmethod_logs_logs_message">this is a message</p>
+
 
 <script type="text/javascript">
-  const LUNAR = 'lunar';
-  const MODULE_CODE = 'lunarpaymentmethod';
-  var exportLogsButton = jQuery(`#${LUNAR}_logs_export_button`);
-  var deleteLogsButton = jQuery(`#${LUNAR}_logs_delete_button`);
-  var logsMessage = jQuery(`#${LUNAR}_logs_logs_message`);
-  var pluginLogsEnabledSelector = jQuery(`#payment_us_${MODULE_CODE}_enable_logs`);
+  /**
+   * Show/hide specific fields based on query parameter
+   */
+  if (
+    "?debug" !== document.location.search
+    && 'test' !== jQuery(`#row_payment_us_lunarpaymentmethod_transaction_mode option:selected`).val()
+  ) {
+      jQuery(`#row_payment_us_lunarpaymentmethod_transaction_mode`).hide();
+      jQuery(`#row_payment_us_lunarpaymentmethod_test_app_key`).hide();
+      jQuery(`#row_payment_us_lunarpaymentmethod_test_public_key`).hide();
+  }
+
+  let lunarExportLogsButton = jQuery(`#lunarpaymentmethod_logs_export_button`);
+  let lunarDeleteLogsButton = jQuery(`#lunarpaymentmethod_logs_delete_button`);
+  let lunarLogsMessage = jQuery(`#lunarpaymentmethod_logs_logs_message`);
+  let lunarLogsEnabledSelector = jQuery(`#payment_us_lunarpaymentmethod_enable_logs`);
 
   function download(filename, content) {
       var a = document.createElement('a');
@@ -38,12 +51,12 @@
     success: function (data) {
       const response = JSON.parse(data);
       if (response.writable) {
-        jQuery("#not-writable").remove();
-        pluginLogsEnabledSelector.attr("disabled", false);
+        jQuery("lunarpaymentmethod_not_writable").remove();
+        lunarLogsEnabledSelector.attr("disabled", false);
       } else {
-        pluginLogsEnabledSelector.val("0");
-        pluginLogsEnabledSelector.attr("disabled", true);
-        pluginLogsEnabledSelector.after('<p id="not-writable" class="note" style="color: red; margin-top: 8px;">Cannot enable logs right now<br />Please make sure the following directory is writable:<br /><pre><small>'+response.dir+'</small></pre></p>');
+        lunarLogsEnabledSelector.val("0");
+        lunarLogsEnabledSelector.attr("disabled", true);
+        lunarLogsEnabledSelector.after('<p id="lunarpaymentmethod_not_writable" class="note" style="color: red; margin-top: 8px;">Cannot enable logs right now<br />Please make sure the following directory is writable:<br /><pre><small>'+response.dir+'</small></pre></p>');
       }
     },
   });
@@ -56,13 +69,13 @@
       data: { "hasLogs": 1 },
       success: function (data) {
         if (!data) {
-          exportLogsButton.attr("disabled", true);
-          deleteLogsButton.attr("disabled", true);
-          logsMessage.html("No logs saved");
+          lunarExportLogsButton.attr("disabled", true);
+          lunarDeleteLogsButton.attr("disabled", true);
+          lunarLogsMessage.html("No logs saved");
         } else {
-          exportLogsButton.attr("disabled", false);
-          deleteLogsButton.attr("disabled", false);
-          logsMessage.html("");
+          lunarExportLogsButton.attr("disabled", false);
+          lunarDeleteLogsButton.attr("disabled", false);
+          lunarLogsMessage.html("");
         }
       }
     });
@@ -70,15 +83,15 @@
 
   checkForLogs();
 
-  deleteLogsButton.on("click", (event) => {
+  lunarDeleteLogsButton.on("click", (event) => {
     event.preventDefault();
 
     if (!confirm("Are you sure you want to delete the logs?")) {
       return;
     }
 
-    deleteLogsButton.attr("disabled", true);
-    deleteLogsButton.html("Loading...");
+    lunarDeleteLogsButton.attr("disabled", true);
+    lunarDeleteLogsButton.html("Loading...");
 
     jQuery.ajax({
       url: "/lunar/index/Log",
@@ -86,19 +99,19 @@
       dataType: 'text',
       data: { "delete": 1 },
       success: function (data) {
-        logsMessage.html("Logs deleted");
-        deleteLogsButton.html("Delete logs");
+        lunarLogsMessage.html("Logs deleted");
+        lunarDeleteLogsButton.html("Delete logs");
 
         setTimeout(checkForLogs, 5000);
       }
     });
   });
 
-  exportLogsButton.on("click", (event) => {
+  lunarExportLogsButton.on("click", (event) => {
     event.preventDefault();
 
-    exportLogsButton.attr("disabled", true);
-    exportLogsButton.html("Loading...");
+    lunarExportLogsButton.attr("disabled", true);
+    lunarExportLogsButton.html("Loading...");
 
     jQuery.ajax({
       url: "/lunar/index/Log",
@@ -106,10 +119,10 @@
       dataType: 'text',
       data: { "export": 1 },
       success: function (data) {
-        download("paymentPluginLogs.zip", data);
+        download("lunarPaymentLogs.zip", data);
 
-        exportLogsButton.attr("disabled", false);
-        exportLogsButton.html("Export logs");
+        lunarExportLogsButton.attr("disabled", false);
+        lunarExportLogsButton.html("Export logs");
       }
     });
   });

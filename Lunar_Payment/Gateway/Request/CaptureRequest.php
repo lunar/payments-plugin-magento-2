@@ -65,12 +65,11 @@ class CaptureRequest implements BuilderInterface
             throw new LocalizedException(__('No authorization transaction to proceed capture.'));
         }
 
-        //$payment->getAuthorizationTransaction() for checking if authorization exists
         return [
             'TXN_TYPE' => 'capture',
             'TXN_ID' => $transactionId,
             'AMOUNT' => $payment->getAmountAuthorized(),
-            'CURRENCY' => $order->getOrderCurrencyCode()
+            'CURRENCY' => $order->getOrderCurrencyCode(),
         ];
     }
 }

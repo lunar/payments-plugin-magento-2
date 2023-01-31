@@ -86,6 +86,39 @@ class Data extends AbstractHelper
 		return __( $message );
 	}
 
+	/**
+	 * Return the number that should be used to compute cents from the total amount
+	 *
+	 * @param $currency_iso_code
+	 *
+	 * @return int|number
+	 */
+
+	 public function getCurrencyMultiplier( $currency_iso_code ) {
+		$currency = $this->getCurrency( $currency_iso_code );
+		if ( isset( $currency['exponent'] ) ) {
+			return pow( 10, $currency['exponent'] );
+		} else {
+			return pow( 10, 2 );
+		}
+	}
+
+	/**
+	 * @return int|number
+	 */
+	public function getAmount( $currency_iso_code, $total ) {
+		$multiplier = $this->getCurrencyMultiplier( $currency_iso_code );
+		$amount = round( $multiplier * $total );
+		if ( function_exists( 'bcmul' ) ) {
+			$amount = round( bcmul( $total, $multiplier ) );
+		}
+
+		return $amount;
+	}
+
+	/**
+	 *
+	 */
 	public function getCurrency( $currency_iso_code ) {
 		$currencies = array(
 			'AED' =>
@@ -1175,32 +1208,5 @@ class Data extends AbstractHelper
 		} else {
 			return null;
 		}
-	}
-
-	/**
-	 * Return the number that should be used to compute cents from the total amount
-	 *
-	 * @param $currency_iso_code
-	 *
-	 * @return int|number
-	 */
-
-	public function getCurrencyMultiplier( $currency_iso_code ) {
-		$currency = $this->getCurrency( $currency_iso_code );
-		if ( isset( $currency['exponent'] ) ) {
-			return pow( 10, $currency['exponent'] );
-		} else {
-			return pow( 10, 2 );
-		}
-	}
-
-	public function getAmount( $currency_iso_code, $total ) {
-		$multiplier = $this->getCurrencyMultiplier( $currency_iso_code );
-		$amount = round( $multiplier * $total );
-		if ( function_exists( 'bcmul' ) ) {
-			$amount = round( bcmul( $total, $multiplier ) );
-		}
-
-		return $amount;
 	}
 }

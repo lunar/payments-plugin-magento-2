@@ -1,6 +1,6 @@
 <?php
 
-namespace LunarPayment\Lunar\Observer;
+namespace Lunar\Payment\Observer;
 
 use Magento\Framework\Event\ObserverInterface;
 use Magento\Framework\Event\Observer;
@@ -12,10 +12,9 @@ use Magento\Sales\Api\Data\OrderPaymentInterface;
  */
 class SalesOrderPaymentVoidObserver implements ObserverInterface
 {
-    const PLUGIN_CODE = 'lunarpaymentmethod';
+    const LUNAR_PAYMENT_METHODS = ['lunarpaymentmethod', 'lunarmobilepay'];
 
     /**
-     *
      * @param Observer $observer
      * @return $this
      */
@@ -29,7 +28,7 @@ class SalesOrderPaymentVoidObserver implements ObserverInterface
         if (!empty($order)) {
             $methodName = $payment->getMethod();
 
-            if ($methodName != self::PLUGIN_CODE) {
+            if ( ! in_array($methodName, self::LUNAR_PAYMENT_METHODS)) {
                 return $this;
             }
 

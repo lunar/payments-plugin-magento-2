@@ -1,0 +1,23 @@
+<?php
+
+/** Get checkout data to be available for precessing in frontend. */
+$checkoutConfig = $block->getCheckoutData()->getSerializedCheckoutConfigs();
+$paymentMethod = $block->getSelectedMethodCode();
+
+/**
+ * Insert component script code to page if payment method match
+ */
+if (
+    'lunarpaymentmethod' === $paymentMethod
+    || 'lunarmobilepay' === $paymentMethod
+    ) {
+
+    /** Set checkout data as window variables. */
+    echo '<script type="text/javascript">window.checkoutConfig = ' . $checkoutConfig . '</script>';
+    echo '<script type="text/javascript">window.paymentMethod = "' . $paymentMethod . '"</script>';
+
+    /** Insert multishipping component */
+    echo '<script src="' . $block->getViewFileUrl('Lunar_Payment::js/view/payment/lunarpaymentmethod/multishipping.js') . '"></script>';
+}
+
+?>
