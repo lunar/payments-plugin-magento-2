@@ -21,7 +21,7 @@ use Lunar\Payment\Gateway\Http\Client\TransactionAuthorize;
  */
 class ConfigProvider implements ConfigProviderInterface
 {
-	const PLUGIN_VERSION = '1.1.0';
+	const PLUGIN_VERSION = '1.2.0';
 
 	const LUNAR_PAYMENT_CODE = 'lunarpaymentmethod';
 	const MOBILEPAY_CODE = 'lunarmobilepay';
