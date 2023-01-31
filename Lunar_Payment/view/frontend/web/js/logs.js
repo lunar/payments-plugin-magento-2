@@ -1,19 +1,21 @@
-window.PluginLogger = {
+window.LunarLogger = {
     date: new Date().getTime(),
     context: {},
-    setContext: function(context, Jquery, MageUrl) {
+    setContext: function(context, Jquery, MageUrl, isMobilePay = false) {
       if (!this.enabled()) {
-        console.log("logs not enabled, stopping");
+        console.log("logs not enabled");
         return;
       }
 
       this.context = context;
       this.Jquery = Jquery;
       this.url = MageUrl;
+      this.isMobilePay = isMobilePay;
     },
+
     log: async function(message, data = {}) {
       if (!this.enabled()) {
-        console.log("logs not enabled, stopping");
+        console.log("logs not enabled");
         return;
       }
 
@@ -22,6 +24,7 @@ window.PluginLogger = {
         data,
         date: this.date,
         context: this.context,
+        method_code: this.isMobilePay ? 'lunarmobilepay' : '',
       }
 
       this.Jquery.ajax({
@@ -31,7 +34,9 @@ window.PluginLogger = {
         data: body
       });
     },
+
     enabled: function () {
-      return window.checkoutConfig.config.custom.logsEnabled;
+      var methodName = this.isMobilePay ? 'lunarmobilepay' : 'lunarpaymentmethod';
+      return window.checkoutConfig[methodName].logsEnabled;
     }
   }

@@ -1,0 +1,45 @@
+<?php
+
+    $order = $block->getOrder();
+    
+    $payment = $order->getPayment();
+    $orderId = $order->getId();
+
+    if (
+        $payment
+        && ('lunarmobilepay' == $payment->getMethod())
+        && is_null($payment->getAmountPaid())
+        && is_null($payment->getAmountAuthorized())
+    ) {
+
+        $buttonText = '';
+        $orderHints = getAdditionalInfoFromPayment($payment, 'lunarmobilepay_hints');
+        if ($orderHints) {
+            $buttonText = 'Finalize order';
+        } else {
+            $buttonText = 'Pay Now';
+        }
+
+        $payUrl = ('/lunar/index/MobilePayPayment/?order_id=' . $orderId);
+
+        $buttonHtml = '<a href="' . $payUrl
+                        . '" target="_blank" class="button action primary" '
+                        . 'style="display:flex; margin-top:5px; margin-bottom:10px;">'
+                        . $buttonText . '</a>';
+
+
+        echo ($buttonHtml);
+    }
+
+
+    function getAdditionalInfoFromPayment($payment, $key)
+    {
+        $additionalInformation = $payment->getAdditionalInformation();
+        $data = [];
+        if ($additionalInformation && array_key_exists($key, $additionalInformation)) {
+            $data = $additionalInformation[$key];
+        }
+
+        return $data;
+    }
+?>

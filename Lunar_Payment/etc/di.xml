@@ -7,60 +7,69 @@
 -->
 
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+
     <!-- Payment Method Facade configuration -->
-    <virtualType name="PluginFacade" type="Magento\Payment\Model\Method\Adapter">
+    <virtualType name="LunarPaymentFacade" type="Magento\Payment\Model\Method\Adapter">
         <arguments>
-            <argument name="code" xsi:type="const">Lunar\Payment\Model\Ui\ConfigProvider::PLUGIN_CODE</argument>
+            <argument name="code" xsi:type="const">Lunar\Payment\Model\Ui\ConfigProvider::LUNAR_PAYMENT_CODE</argument>
             <argument name="formBlockType" xsi:type="string">Magento\Payment\Block\Form</argument>
-            <argument name="infoBlockType" xsi:type="string">Lunar\Payment\Block\Info</argument>
-            <argument name="valueHandlerPool" xsi:type="object">MagentoValueHandlerPool</argument>
-            <argument name="commandPool" xsi:type="object">MagentoCommandPool</argument>
+            <argument name="infoBlockType" xsi:type="string">LunarBlockInfo</argument>
+            <argument name="valueHandlerPool" xsi:type="object">LunarValueHandlerPool</argument>
+            <argument name="commandPool" xsi:type="object">LunarCommandPool</argument>
         </arguments>
     </virtualType>
 
-    <!-- Configuration reader -->
-    <virtualType name="MagentoConfig" type="Magento\Payment\Gateway\Config\Config">
+    <type name="Lunar\Payment\Model\Ui\ConfigProvider">
         <arguments>
-            <argument name="methodCode" xsi:type="const">Lunar\Payment\Model\Ui\ConfigProvider::PLUGIN_CODE</argument>
+            <argument name="paymentMethods" xsi:type="array">
+                <item name="lunarpaymentmethod" xsi:type="const">Lunar\Payment\Model\Ui\ConfigProvider::LUNAR_PAYMENT_CODE</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Configuration reader -->
+    <virtualType name="LunarConfig" type="Magento\Payment\Gateway\Config\Config">
+        <arguments>
+            <argument name="methodCode" xsi:type="const">Lunar\Payment\Model\Ui\ConfigProvider::LUNAR_PAYMENT_CODE</argument>
         </arguments>
     </virtualType>
 
     <!-- Logger, initialized with configurations -->
     <virtualType name="PluginLogger" type="Magento\Payment\Model\Method\Logger">
         <arguments>
-            <argument name="config" xsi:type="object">MagentoConfig</argument>
+            <argument name="config" xsi:type="object">LunarConfig</argument>
         </arguments>
     </virtualType>
 
-    <type name="Lunar\Payment\Gateway\Http\Client\TransactionAuthorize">
+    <virtualType name="LunarTransactionAuthorize" type="Lunar\Payment\Gateway\Http\Client\TransactionAuthorize">
         <arguments>
             <argument name="logger" xsi:type="object">PluginLogger</argument>
         </arguments>
-    </type>
+    </virtualType>
 
-    <type name="Lunar\Payment\Gateway\Http\Client\TransactionCapture">
+    <virtualType name="LunarTransactionCapture" type="Lunar\Payment\Gateway\Http\Client\TransactionCapture">
         <arguments>
             <argument name="logger" xsi:type="object">PluginLogger</argument>
         </arguments>
-    </type>
+    </virtualType>
 
-    <type name="Lunar\Payment\Gateway\Http\Client\TransactionVoid">
+    <virtualType name="LunarTransactionVoid" type="Lunar\Payment\Gateway\Http\Client\TransactionVoid">
         <arguments>
             <argument name="logger" xsi:type="object">PluginLogger</argument>
         </arguments>
-    </type>
+    </virtualType>
 
-    <type name="Lunar\Payment\Gateway\Http\Client\TransactionRefund">
+    <virtualType name="LunarTransactionRefund" type="Lunar\Payment\Gateway\Http\Client\TransactionRefund">
         <arguments>
             <argument name="logger" xsi:type="object">PluginLogger</argument>
         </arguments>
-    </type>
+    </virtualType>
 
-    <type name="Lunar\Payment\Gateway\Response\TxnIdHandler">
+    <virtualType name="LunarTxnIdHandler" type="Lunar\Payment\Gateway\Response\TxnIdHandler">
         <arguments>
             <argument name="logger" xsi:type="object">PluginLogger</argument>
         </arguments>
-    </type>
+    </virtualType>
 
     <type name="Lunar\Payment\Observer\CheckoutAllSubmitAfterObserver">
         <arguments>
@@ -68,8 +77,10 @@
         </arguments>
     </type>
 
+    <virtualType name="LunarTransferFactory" type="Lunar\Payment\Gateway\Http\TransferFactory"></virtualType>
+
     <!-- Commands infrastructure -->
-    <virtualType name="MagentoCommandPool" type="Magento\Payment\Gateway\Command\CommandPool">
+    <virtualType name="LunarCommandPool" type="Magento\Payment\Gateway\Command\CommandPool">
         <arguments>
             <argument name="commands" xsi:type="array">
                 <item name="authorize" xsi:type="string">PluginAuthorizeCommand</item>
@@ -85,44 +96,47 @@
     <!-- Authorize command -->
     <virtualType name="PluginAuthorizeCommand" type="Magento\Payment\Gateway\Command\GatewayCommand">
         <arguments>
-            <argument name="requestBuilder" xsi:type="object">PluginAuthorizationRequest</argument>
+            <argument name="requestBuilder" xsi:type="object">LunarAuthorizationRequestBuilder</argument>
             <argument name="handler" xsi:type="object">PluginResponseHandlerComposite</argument>
-            <argument name="transferFactory" xsi:type="object">Lunar\Payment\Gateway\Http\TransferFactory</argument>
-            <argument name="client" xsi:type="object">Lunar\Payment\Gateway\Http\Client\TransactionAuthorize</argument>
+            <argument name="transferFactory" xsi:type="object">LunarTransferFactory</argument>
+            <argument name="client" xsi:type="object">LunarTransactionAuthorize</argument>
         </arguments>
     </virtualType>
 
     <!-- Authorization Request -->
-    <virtualType name="PluginAuthorizationRequest" type="Magento\Payment\Gateway\Request\BuilderComposite">
+    <virtualType name="LunarAuthorizationRequestBuilder" type="Magento\Payment\Gateway\Request\BuilderComposite">
         <arguments>
             <argument name="builders" xsi:type="array">
-                <item name="transaction" xsi:type="string">Lunar\Payment\Gateway\Request\AuthorizationRequest</item>
+                <item name="transaction" xsi:type="string">LunarAuthorizationRequest</item>
             </argument>
         </arguments>
     </virtualType>
-    <type name="Lunar\Payment\Gateway\Request\AuthorizationRequest">
+
+    <virtualType name="LunarAuthorizationRequest" type="Lunar\Payment\Gateway\Request\AuthorizationRequest">
         <arguments>
-            <argument name="config" xsi:type="object">MagentoConfig</argument>
+            <argument name="config" xsi:type="object">LunarConfig</argument>
         </arguments>
-    </type>
+    </virtualType>
+
+    <virtualType name="LunarResponseCodeValidator" type="Lunar\Payment\Gateway\Validator\ResponseCodeValidator"></virtualType>
 
     <!-- Capture command -->
     <virtualType name="PluginCaptureCommand" type="Magento\Payment\Gateway\Command\GatewayCommand">
         <arguments>
-            <argument name="requestBuilder" xsi:type="object">Lunar\Payment\Gateway\Request\CaptureRequest</argument>
-            <argument name="handler" xsi:type="object">Lunar\Payment\Gateway\Response\TxnIdHandler</argument>
-            <argument name="transferFactory" xsi:type="object">Lunar\Payment\Gateway\Http\TransferFactory</argument>
-            <argument name="validator" xsi:type="object">Lunar\Payment\Gateway\Validator\ResponseCodeValidator</argument>
-            <argument name="client" xsi:type="object">Lunar\Payment\Gateway\Http\Client\TransactionCapture</argument>
+            <argument name="requestBuilder" xsi:type="object">LunarCaptureRequest</argument>
+            <argument name="handler" xsi:type="object">LunarTxnIdHandler</argument>
+            <argument name="transferFactory" xsi:type="object">LunarTransferFactory</argument>
+            <argument name="validator" xsi:type="object">LunarResponseCodeValidator</argument>
+            <argument name="client" xsi:type="object">LunarTransactionCapture</argument>
         </arguments>
     </virtualType>
 
     <!-- Capture Request -->
-    <type name="Lunar\Payment\Gateway\Request\CaptureRequest">
+    <virtualType name="LunarCaptureRequest" type="Lunar\Payment\Gateway\Request\CaptureRequest">
         <arguments>
-            <argument name="config" xsi:type="object">MagentoConfig</argument>
+            <argument name="config" xsi:type="object">LunarConfig</argument>
         </arguments>
-    </type>
+    </virtualType>
 
     <!-- Authorization&Capture command  -->
     <virtualType name="PluginSaleCommand" type="PluginAuthorizeCommand">
@@ -133,8 +147,8 @@
     <virtualType name="PluginSaleRequest" type="Magento\Payment\Gateway\Request\BuilderComposite">
         <arguments>
             <argument name="builders" xsi:type="array">
-                <item name="authorize" xsi:type="string">PluginAuthorizationRequest</item>
-                <item name="capture" xsi:type="string">Lunar\Payment\Gateway\Request\CaptureRequest</item>
+                <item name="authorize" xsi:type="string">LunarAuthorizationRequestBuilder</item>
+                <item name="capture" xsi:type="string">LunarCaptureRequest</item>
             </argument>
         </arguments>
     </virtualType>
@@ -142,67 +156,281 @@
     <!-- Void command -->
     <virtualType name="PluginVoidCommand" type="Magento\Payment\Gateway\Command\GatewayCommand">
         <arguments>
-            <argument name="requestBuilder" xsi:type="object">Lunar\Payment\Gateway\Request\VoidRequest</argument>
-            <argument name="handler" xsi:type="object">Lunar\Payment\Gateway\Response\TxnIdHandler</argument>
-            <argument name="transferFactory" xsi:type="object">Lunar\Payment\Gateway\Http\TransferFactory</argument>
-            <argument name="validator" xsi:type="object">Lunar\Payment\Gateway\Validator\ResponseCodeValidator</argument>
-            <argument name="client" xsi:type="object">Lunar\Payment\Gateway\Http\Client\TransactionVoid</argument>
+            <argument name="requestBuilder" xsi:type="object">LunarVoidRequest</argument>
+            <argument name="handler" xsi:type="object">LunarTxnIdHandler</argument>
+            <argument name="transferFactory" xsi:type="object">LunarTransferFactory</argument>
+            <argument name="validator" xsi:type="object">LunarResponseCodeValidator</argument>
+            <argument name="client" xsi:type="object">LunarTransactionVoid</argument>
         </arguments>
     </virtualType>
 
     <!-- Void Request -->
-    <type name="Lunar\Payment\Gateway\Request\VoidRequest">
+    <virtualType name="LunarVoidRequest" type="Lunar\Payment\Gateway\Request\VoidRequest">
         <arguments>
-            <argument name="config" xsi:type="object">MagentoConfig</argument>
+            <argument name="config" xsi:type="object">LunarConfig</argument>
         </arguments>
-    </type>
+    </virtualType>
 
     <!-- Refund command -->
     <virtualType name="PluginRefundCommand" type="Magento\Payment\Gateway\Command\GatewayCommand">
         <arguments>
-            <argument name="requestBuilder" xsi:type="object">Lunar\Payment\Gateway\Request\RefundRequest</argument>
-            <argument name="handler" xsi:type="object">Lunar\Payment\Gateway\Response\TxnIdHandler</argument>
-            <argument name="transferFactory" xsi:type="object">Lunar\Payment\Gateway\Http\TransferFactory</argument>
-            <argument name="validator" xsi:type="object">Lunar\Payment\Gateway\Validator\ResponseCodeValidator</argument>
-            <argument name="client" xsi:type="object">Lunar\Payment\Gateway\Http\Client\TransactionRefund</argument>
+            <argument name="requestBuilder" xsi:type="object">LunarRefundRequest</argument>
+            <argument name="handler" xsi:type="object">LunarTxnIdHandler</argument>
+            <argument name="transferFactory" xsi:type="object">LunarTransferFactory</argument>
+            <argument name="validator" xsi:type="object">LunarResponseCodeValidator</argument>
+            <argument name="client" xsi:type="object">LunarTransactionRefund</argument>
         </arguments>
     </virtualType>
 
     <!-- Refund Request -->
-    <type name="Lunar\Payment\Gateway\Request\RefundRequest">
+    <virtualType name="LunarRefundRequest" type="Lunar\Payment\Gateway\Request\RefundRequest">
         <arguments>
-            <argument name="config" xsi:type="object">MagentoConfig</argument>
+            <argument name="config" xsi:type="object">LunarConfig</argument>
         </arguments>
-    </type>
+    </virtualType>
 
     <!-- Response handlers -->
     <virtualType name="PluginResponseHandlerComposite" type="Magento\Payment\Gateway\Response\HandlerChain">
         <arguments>
             <argument name="handlers" xsi:type="array">
-                <item name="txnid" xsi:type="string">Lunar\Payment\Gateway\Response\TxnIdHandler</item>
+                <item name="txnid" xsi:type="string">LunarTxnIdHandler</item>
                 <item name="fraud" xsi:type="string">Lunar\Payment\Gateway\Response\FraudHandler</item>
             </argument>
         </arguments>
     </virtualType>
 
     <!-- Value handlers infrastructure -->
-    <virtualType name="MagentoValueHandlerPool" type="Magento\Payment\Gateway\Config\ValueHandlerPool">
+    <virtualType name="LunarValueHandlerPool" type="Magento\Payment\Gateway\Config\ValueHandlerPool">
         <arguments>
             <argument name="handlers" xsi:type="array">
-                <item name="default" xsi:type="string">PluginConfigValueHandler</item>
+                <item name="default" xsi:type="string">LunarConfigValueHandler</item>
             </argument>
         </arguments>
     </virtualType>
-    <virtualType name="PluginConfigValueHandler" type="Magento\Payment\Gateway\Config\ConfigValueHandler">
+    <virtualType name="LunarConfigValueHandler" type="Magento\Payment\Gateway\Config\ConfigValueHandler">
         <arguments>
-            <argument name="configInterface" xsi:type="object">MagentoConfig</argument>
+            <argument name="configInterface" xsi:type="object">LunarConfig</argument>
         </arguments>
     </virtualType>
 
-    <type name="Lunar\Payment\Block\Info">
+    <virtualType name="LunarBlockInfo" type="Lunar\Payment\Block\Info">
         <arguments>
-            <argument name="config" xsi:type="object">MagentoConfig</argument>
+            <argument name="config" xsi:type="object">LunarConfig</argument>
+        </arguments>
+    </virtualType>
+
+
+<!-- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -->
+<!-- ++++++++++++++++++++++++++++++++++++++++++++ MOBILE PAY DEPENDENCY INJECTION ++++++++++++++++++++++++++++++++++++++++++++++++++++++ -->
+<!-- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -->
+
+    <virtualType name="LunarMobilePayFacade" type="Magento\Payment\Model\Method\Adapter">
+        <arguments>
+            <argument name="code" xsi:type="const">Lunar\Payment\Model\Ui\ConfigProvider::MOBILEPAY_CODE</argument>
+            <argument name="formBlockType" xsi:type="string">Magento\Payment\Block\Form</argument>
+            <argument name="infoBlockType" xsi:type="string">LunarMobilePayBlockInfo</argument>
+            <argument name="valueHandlerPool" xsi:type="object">LunarMobilePayValueHandlerPool</argument>
+            <argument name="commandPool" xsi:type="object">LunarMobilePayCommandPool</argument>
+        </arguments>
+    </virtualType>
+
+    <type name="Lunar\Payment\Model\Ui\ConfigProvider">
+        <arguments>
+            <argument name="paymentMethods" xsi:type="array">
+                <item name="lunarmobilepay" xsi:type="const">Lunar\Payment\Model\Ui\ConfigProvider::MOBILEPAY_CODE</item>
+            </argument>
         </arguments>
     </type>
+
+    <!-- Configuration reader -->
+    <virtualType name="LunarMobilePayConfig" type="Magento\Payment\Gateway\Config\Config">
+        <arguments>
+            <argument name="methodCode" xsi:type="const">Lunar\Payment\Model\Ui\ConfigProvider::MOBILEPAY_CODE</argument>
+        </arguments>
+    </virtualType>
+
+    <!-- Logger, initialized with configurations -->
+    <virtualType name="LunarMobilePayLogger" type="Magento\Payment\Model\Method\Logger">
+        <arguments>
+            <argument name="config" xsi:type="object">LunarMobilePayConfig</argument>
+        </arguments>
+    </virtualType>
+
+    <virtualType name="LunarMobilePayTransactionAuthorize" type="Lunar\Payment\Gateway\Http\Client\TransactionAuthorize">
+        <arguments>
+            <argument name="logger" xsi:type="object">LunarMobilePayLogger</argument>
+        </arguments>
+    </virtualType>
+
+    <virtualType name="LunarMobilePayTransactionCapture" type="Lunar\Payment\Gateway\Http\Client\TransactionCapture">
+        <arguments>
+            <argument name="logger" xsi:type="object">LunarMobilePayLogger</argument>
+        </arguments>
+    </virtualType>
+
+    <virtualType name="LunarMobilePayTransactionVoid" type="Lunar\Payment\Gateway\Http\Client\TransactionVoid">
+        <arguments>
+            <argument name="logger" xsi:type="object">LunarMobilePayLogger</argument>
+        </arguments>
+    </virtualType>
+
+    <virtualType name="LunarMobilePayTransactionRefund" type="Lunar\Payment\Gateway\Http\Client\TransactionRefund">
+        <arguments>
+            <argument name="logger" xsi:type="object">LunarMobilePayLogger</argument>
+        </arguments>
+    </virtualType>
+
+    <virtualType name="LunarMobilePayTxnIdHandler" type="Lunar\Payment\Gateway\Response\TxnIdHandler">
+        <arguments>
+            <argument name="logger" xsi:type="object">LunarMobilePayLogger</argument>
+        </arguments>
+    </virtualType>
+
+    <type name="Lunar\Payment\Observer\MobilePayCheckoutAllSubmitAfterObserver">
+        <arguments>
+            <argument name="logger" xsi:type="object">LunarMobilePayLogger</argument>
+            <argument name="orderStatusHistory" xsi:type="object">Magento\Sales\Api\Data\OrderStatusHistoryInterface</argument>
+        </arguments>
+    </type>
+
+    <!-- Commands infrastructure -->
+    <virtualType name="LunarMobilePayCommandPool" type="Magento\Payment\Gateway\Command\CommandPool">
+        <arguments>
+            <argument name="commands" xsi:type="array">
+                <item name="authorize" xsi:type="string">LunarMobilePayAuthorizeCommand</item>
+                <item name="capture" xsi:type="string">LunarMobilePayCaptureCommand</item>
+                <item name="sale" xsi:type="string">LunarMobilePaySaleCommand</item>
+                <item name="void" xsi:type="string">LunarMobilePayVoidCommand</item>
+                <item name="cancel" xsi:type="string">LunarMobilePayVoidCommand</item>
+                <item name="refund" xsi:type="string">LunarMobilePayRefundCommand</item>
+            </argument>
+        </arguments>
+    </virtualType>
+
+    <!-- Authorize command -->
+    <virtualType name="LunarMobilePayAuthorizeCommand" type="Magento\Payment\Gateway\Command\GatewayCommand">
+        <arguments>
+            <argument name="requestBuilder" xsi:type="object">LunarMobilePayAuthorizationRequestBuilder</argument>
+            <argument name="handler" xsi:type="object">LunarMobilePayResponseHandlerComposite</argument>
+            <argument name="transferFactory" xsi:type="object">LunarTransferFactory</argument>
+            <argument name="client" xsi:type="object">LunarMobilePayTransactionAuthorize</argument>
+        </arguments>
+    </virtualType>
+
+    <!-- Authorization Request -->
+    <virtualType name="LunarMobilePayAuthorizationRequestBuilder" type="Magento\Payment\Gateway\Request\BuilderComposite">
+        <arguments>
+            <argument name="builders" xsi:type="array">
+                <item name="transaction" xsi:type="string">LunarMobilePayAuthorizationRequest</item>
+            </argument>
+        </arguments>
+    </virtualType>
+
+    <virtualType name="LunarMobilePayAuthorizationRequest" type="Lunar\Payment\Gateway\Request\AuthorizationRequest">
+        <arguments>
+            <argument name="config" xsi:type="object">LunarMobilePayConfig</argument>
+        </arguments>
+    </virtualType>
+
+    <!-- Capture command -->
+    <virtualType name="LunarMobilePayCaptureCommand" type="Magento\Payment\Gateway\Command\GatewayCommand">
+        <arguments>
+            <argument name="requestBuilder" xsi:type="object">LunarCaptureRequest</argument>
+            <argument name="handler" xsi:type="object">LunarMobilePayTxnIdHandler</argument>
+            <argument name="transferFactory" xsi:type="object">LunarTransferFactory</argument>
+            <argument name="validator" xsi:type="object">LunarResponseCodeValidator</argument>
+            <argument name="client" xsi:type="object">LunarMobilePayTransactionCapture</argument>
+        </arguments>
+    </virtualType>
+
+    <!-- Capture Request -->
+    <virtualType name="LunarMobilePayCaptureRequest" type="Lunar\Payment\Gateway\Request\CaptureRequest">
+        <arguments>
+            <argument name="config" xsi:type="object">LunarMobilePayConfig</argument>
+        </arguments>
+    </virtualType>
+
+    <!-- Authorization&Capture command  -->
+    <virtualType name="LunarMobilePaySaleCommand" type="PluginAuthorizeCommand">
+        <arguments>
+            <argument name="requestBuilder" xsi:type="object">LunarMobilePaySaleRequestBuilder</argument>
+        </arguments>
+    </virtualType>
+    <virtualType name="LunarMobilePaySaleRequestBuilder" type="Magento\Payment\Gateway\Request\BuilderComposite">
+        <arguments>
+            <argument name="builders" xsi:type="array">
+                <item name="authorize" xsi:type="string">LunarMobilePayAuthorizationRequestBuilder</item>
+                <item name="capture" xsi:type="string">LunarMobilePayCaptureRequest</item>
+            </argument>
+        </arguments>
+    </virtualType>
+
+    <!-- Void command -->
+    <virtualType name="LunarMobilePayVoidCommand" type="Magento\Payment\Gateway\Command\GatewayCommand">
+        <arguments>
+            <argument name="requestBuilder" xsi:type="object">LunarMobilePayVoidRequest</argument>
+            <argument name="handler" xsi:type="object">LunarMobilePayTxnIdHandler</argument>
+            <argument name="transferFactory" xsi:type="object">LunarTransferFactory</argument>
+            <argument name="validator" xsi:type="object">LunarResponseCodeValidator</argument>
+            <argument name="client" xsi:type="object">LunarMobilePayTransactionVoid</argument>
+        </arguments>
+    </virtualType>
+
+    <!-- Void Request -->
+    <virtualType name="LunarMobilePayVoidRequest" type="Lunar\Payment\Gateway\Request\VoidRequest">
+        <arguments>
+            <argument name="config" xsi:type="object">LunarMobilePayConfig</argument>
+        </arguments>
+    </virtualType>
+
+    <!-- Refund command -->
+    <virtualType name="LunarMobilePayRefundCommand" type="Magento\Payment\Gateway\Command\GatewayCommand">
+        <arguments>
+            <argument name="requestBuilder" xsi:type="object">LunarMobilePayRefundRequest</argument>
+            <argument name="handler" xsi:type="object">LunarMobilePayTxnIdHandler</argument>
+            <argument name="transferFactory" xsi:type="object">LunarTransferFactory</argument>
+            <argument name="validator" xsi:type="object">LunarResponseCodeValidator</argument>
+            <argument name="client" xsi:type="object">LunarMobilePayTransactionRefund</argument>
+        </arguments>
+    </virtualType>
+
+    <!-- Refund Request -->
+    <virtualType name="LunarMobilePayRefundRequest" type="Lunar\Payment\Gateway\Request\RefundRequest">
+        <arguments>
+            <argument name="config" xsi:type="object">LunarMobilePayConfig</argument>
+        </arguments>
+    </virtualType>
+
+    <!-- Response handlers -->
+    <virtualType name="LunarMobilePayResponseHandlerComposite" type="Magento\Payment\Gateway\Response\HandlerChain">
+        <arguments>
+            <argument name="handlers" xsi:type="array">
+                <item name="txnid" xsi:type="string">LunarMobilePayTxnIdHandler</item>
+                <item name="fraud" xsi:type="string">Lunar\Payment\Gateway\Response\FraudHandler</item>
+            </argument>
+        </arguments>
+    </virtualType>
+
+    <!-- Value handlers infrastructure -->
+    <virtualType name="LunarMobilePayValueHandlerPool" type="Magento\Payment\Gateway\Config\ValueHandlerPool">
+        <arguments>
+            <argument name="handlers" xsi:type="array">
+                <item name="default" xsi:type="string">LunarMobilePayConfigValueHandler</item>
+            </argument>
+        </arguments>
+    </virtualType>
+    <virtualType name="LunarMobilePayConfigValueHandler" type="Magento\Payment\Gateway\Config\ConfigValueHandler">
+        <arguments>
+            <argument name="configInterface" xsi:type="object">LunarMobilePayConfig</argument>
+        </arguments>
+    </virtualType>
+
+    <virtualType name="LunarMobilePayBlockInfo" type="Lunar\Payment\Block\Info">
+        <arguments>
+            <argument name="config" xsi:type="object">LunarMobilePayConfig</argument>
+        </arguments>
+    </virtualType>
+
+
 
 </config>

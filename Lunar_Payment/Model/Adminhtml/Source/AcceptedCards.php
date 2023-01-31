@@ -5,12 +5,12 @@
  */
 namespace Lunar\Payment\Model\Adminhtml\Source;
 
-use Magento\Framework\Option\ArrayInterface;
+use Magento\Framework\Data\OptionSourceInterface;
 
 /**
  * Class AcceptedCards
  */
-class AcceptedCards implements ArrayInterface
+class AcceptedCards implements OptionSourceInterface
 {
     const CARD_VISA = 'visa';
     const CARD_VISAELECTRON = 'visaelectron';
@@ -19,7 +19,7 @@ class AcceptedCards implements ArrayInterface
 
 
     /**
-     * Possible checkout mode types
+     * Possible credit card types
      *
      * @return array
      */

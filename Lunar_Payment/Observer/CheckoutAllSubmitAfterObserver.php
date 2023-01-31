@@ -20,41 +20,21 @@ use Magento\Store\Model\ScopeInterface;
 
 class CheckoutAllSubmitAfterObserver implements ObserverInterface
 {
-    const PLUGIN_CODE = 'lunarpaymentmethod';
+    const LUNAR_PAYMENT_CODE = 'lunarpaymentmethod';
 
-    /**
-     * @var Logger
-     */
+
     private $logger;
 
-    /**
-     * @var ScopeConfigInterface
-     */
     protected $scopeConfig;
 
-    /**
-     *
-     * @var CollectionFactory
-     */
     protected $invoiceCollectionFactory;
 
-    /**
-     *
-     * @var InvoiceService
-     */
     protected $invoiceService;
 
-    /**
-     *
-     * @var InvoiceSender
-     */
     protected $invoiceSender;
 
-    /**
-     *
-     * @var TransactionFactory
-     */
     protected $transactionFactory;
+
 
     /**
      * @param Logger $logger
@@ -87,19 +67,16 @@ class CheckoutAllSubmitAfterObserver implements ObserverInterface
      */
     public function execute(Observer $observer)
     {
-        $captureMode =  $this->scopeConfig->getValue('payment/' . self::PLUGIN_CODE . '/capture_mode', ScopeInterface::SCOPE_STORE);
-        $invoiceEmailMode =  $this->scopeConfig->getValue('payment/' . self::PLUGIN_CODE . '/invoice_email', ScopeInterface::SCOPE_STORE);
-
         /** Check for "order" - normal checkout flow. */
         $order = $observer->getEvent()->getOrder();
         /** Check for "orders" - multishipping checkout flow. */
         $orders = $observer->getEvent()->getOrders();
 
         if (!empty($order)) {
-            $this->processOrder($order, $captureMode, $invoiceEmailMode);
+            $this->processOrder($order);
         } elseif (!empty($orders)) {
             foreach ($orders as $order) {
-                $this->processOrder($order, $captureMode, $invoiceEmailMode);
+                $this->processOrder($order);
             }
         }
 
@@ -108,15 +85,17 @@ class CheckoutAllSubmitAfterObserver implements ObserverInterface
 
     /**
      * @param Order $order
-     * @param $captureMode
-     * @param $invoiceEmailMode
      */
-    private function processOrder(Order $order, $captureMode, $invoiceEmailMode)
+    private function processOrder(Order $order)
     {
         $payment = $order->getPayment();
         $methodName = $payment->getMethod();
 
-        if ($methodName != self::PLUGIN_CODE) {
+        $captureMode =  $this->scopeConfig->getValue('payment/' . $methodName . '/capture_mode', ScopeInterface::SCOPE_STORE);
+        $invoiceEmailMode =  $this->scopeConfig->getValue('payment/' . $methodName . '/invoice_email', ScopeInterface::SCOPE_STORE);
+
+
+        if (self::LUNAR_PAYMENT_CODE != $methodName) {
             return $this;
         }
 

@@ -1,0 +1,13 @@
+.card-logos img,
+.mobilepay-logo img {
+    vertical-align: middle;
+    margin-right: 5px;
+}
+
+#lunarmobilepay_messages {
+    display: none;
+    background-color: #ff5501;
+    padding: 2rem;
+    font-size: 1.5rem;
+    font-weight: bold;
+}

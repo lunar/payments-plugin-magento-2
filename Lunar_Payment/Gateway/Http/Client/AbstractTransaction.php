@@ -1,8 +1,5 @@
 <?php
-/**
- * Copyright © 2013-2017 Magento, Inc. All rights reserved.
- * See COPYING.txt for license details.
- */
+
 
 namespace Lunar\Payment\Gateway\Http\Client;
 
@@ -13,33 +10,17 @@ use Magento\Payment\Gateway\Http\TransferInterface;
 use Magento\Payment\Model\Method\Logger;
 use Lunar\Payment\Helper\Data as Helper;
 
+
 /**
  * Class AbstractTransaction
  */
-abstract class AbstractTransaction implements ClientInterface {
-	/**
-	 * @var Logger
-	 */
-	protected $logger;
-
-	/**
-	 * @var PaymentAdapter
-	 */
-	protected $adapter;
-
-	/**
-	 * @var Helper
-	 */
-	protected $helper;
-
-	/**
-	 * Constructor
-	 *
-	 * @param Logger         $logger
-	 * @param PaymentAdapter $adapter
-	 * @param Helper         $helper
-	 */
-	public function __construct( Logger $logger, PaymentAdapter $adapter, Helper $helper ) {
+abstract class AbstractTransaction implements ClientInterface
+{
+	public function __construct(
+								Logger $logger,
+								PaymentAdapter $adapter,
+								Helper $helper
+	) {
 		$this->logger = $logger;
 		$this->adapter = $adapter;
 		$this->helper = $helper;

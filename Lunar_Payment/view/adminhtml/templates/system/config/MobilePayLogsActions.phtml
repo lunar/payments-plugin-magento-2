@@ -1,0 +1,128 @@
+<style>
+  #lunarmobilepay_logs_buttons_container {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+  }
+
+  #lunarmobilepay_logs_logs_message {
+    margin-top: 8px;
+  }
+</style>
+<div id="lunarmobilepay_logs_buttons_container">
+  <button id="lunarmobilepay_logs_export_button" disabled>Export logs</button>
+  <button id="lunarmobilepay_logs_delete_button" disabled>Delete logs</button>
+</div>
+<p id="lunarmobilepay_logs_logs_message">this is a message</p>
+
+
+<script type="text/javascript">
+  /**
+   * Show/hide specific fields based on query parameter
+   */
+  if (
+    "?debug" !== document.location.search
+    && 'test' !== jQuery(`#row_payment_us_lunarmobilepay_transaction_mode option:selected`).val()
+    ) {
+      jQuery(`#row_payment_us_lunarmobilepay_transaction_mode`).hide();
+      jQuery(`#row_payment_us_lunarmobilepay_test_app_key`).hide();
+      jQuery(`#row_payment_us_lunarmobilepay_test_public_key`).hide();
+  }
+
+
+  let mobilepayExportLogsButton = jQuery(`#lunarmobilepay_logs_export_button`);
+  let mobilepayDeleteLogsButton = jQuery(`#lunarmobilepay_logs_delete_button`);
+  let mobilepayLogsMessage = jQuery(`#lunarmobilepay_logs_logs_message`);
+  let mobilepayLogsEnabledSelector = jQuery(`#payment_us_lunarmobilepay_enable_logs`);
+
+  function download(filename, content) {
+      var a = document.createElement('a');
+      a.setAttribute('href', 'data:application/zip;base64, ' + content);
+      a.setAttribute('download', filename);
+      a.click();
+  }
+
+  jQuery.ajax({
+    url: "/lunar/index/Log",
+    type: 'POST',
+    dataType: 'text',
+    data: { "writable": 1 , "method_code": "lunarmobilepay"},
+    success: function (data) {
+      const response = JSON.parse(data);
+      if (response.writable) {
+        jQuery("#lunarmobilepay_not_writable").remove();
+        mobilepayLogsEnabledSelector.attr("disabled", false);
+      } else {
+        mobilepayLogsEnabledSelector.val("0");
+        mobilepayLogsEnabledSelector.attr("disabled", true);
+        mobilepayLogsEnabledSelector.after('<p id="lunarmobilepay_not_writable" class="note" style="color: red; margin-top: 8px;">Cannot enable logs right now<br />Please make sure the following directory is writable:<br /><pre><small>'+response.dir+'</small></pre></p>');
+      }
+    },
+  });
+
+  function checkForLogs() {
+    jQuery.ajax({
+      url: "/lunar/index/Log",
+      type: 'POST',
+      dataType: 'text',
+      data: { "hasLogs": 1  , "method_code": "lunarmobilepay"},
+      success: function (data) {
+        if (!data) {
+          mobilepayExportLogsButton.attr("disabled", true);
+          mobilepayDeleteLogsButton.attr("disabled", true);
+          mobilepayLogsMessage.html("No logs saved");
+        } else {
+          mobilepayExportLogsButton.attr("disabled", false);
+          mobilepayDeleteLogsButton.attr("disabled", false);
+          mobilepayLogsMessage.html("");
+        }
+      }
+    });
+  }
+
+  checkForLogs();
+
+  mobilepayDeleteLogsButton.on("click", (event) => {
+    event.preventDefault();
+
+    if (!confirm("Are you sure you want to delete the logs?")) {
+      return;
+    }
+
+    mobilepayDeleteLogsButton.attr("disabled", true);
+    mobilepayDeleteLogsButton.html("Loading...");
+
+    jQuery.ajax({
+      url: "/lunar/index/Log",
+      type: 'POST',
+      dataType: 'text',
+      data: { "delete": 1  , "method_code": "lunarmobilepay"},
+      success: function (data) {
+        mobilepayLogsMessage.html("Logs deleted");
+        mobilepayDeleteLogsButton.html("Delete logs");
+
+        setTimeout(checkForLogs, 5000);
+      }
+    });
+  });
+
+  mobilepayExportLogsButton.on("click", (event) => {
+    event.preventDefault();
+
+    mobilepayExportLogsButton.attr("disabled", true);
+    mobilepayExportLogsButton.html("Loading...");
+
+    jQuery.ajax({
+      url: "/lunar/index/Log",
+      type: 'POST',
+      dataType: 'text',
+      data: { "export": 1  , "method_code": "lunarmobilepay"},
+      success: function (data) {
+        download("lunarMobilepayLogs.zip", data);
+
+        mobilepayExportLogsButton.attr("disabled", false);
+        mobilepayExportLogsButton.html("Export logs");
+      }
+    });
+  });
+</script>

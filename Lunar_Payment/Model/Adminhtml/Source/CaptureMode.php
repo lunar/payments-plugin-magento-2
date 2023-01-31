@@ -5,12 +5,12 @@
  */
 namespace Lunar\Payment\Model\Adminhtml\Source;
 
-use Magento\Framework\Option\ArrayInterface;
+use Magento\Framework\Data\OptionSourceInterface;
 
 /**
  * Class CaptureMode
  */
-class CaptureMode implements ArrayInterface
+class CaptureMode implements OptionSourceInterface
 {
     const MODE_INSTANT = 'instant';
     const MODE_DELAYED = 'delayed';

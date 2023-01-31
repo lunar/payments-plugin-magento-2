@@ -1,32 +1,31 @@
 <?php
-/**
- * Copyright © 2016 Magento. All rights reserved.
- * See COPYING.txt for license details.
- */
 
 namespace Lunar\Payment\Model\Ui;
 
-use Magento\Checkout\Model\ConfigProviderInterface;
-use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Checkout\Model\Cart;
+use Magento\Framework\Locale\Resolver;
+use Magento\Store\Model\ScopeInterface;
+use Magento\Framework\App\ObjectManager;
 use Magento\Framework\View\Asset\Repository;
 use Magento\Quote\Api\CartRepositoryInterface;
 use Magento\Store\Model\StoreManagerInterface;
-use Magento\Framework\Locale\Resolver;
-use Magento\Framework\App\ObjectManager;
-use Magento\Store\Model\ScopeInterface;
-use Magento\Quote\Model\Quote;
+use Magento\Checkout\Model\ConfigProviderInterface;
+use Magento\Framework\App\Config\ScopeConfigInterface;
 
-use Lunar\Payment\Model\Adminhtml\Source\AcceptedCards;
 use Lunar\Payment\Helper\Data as Helper;
+use Lunar\Payment\Model\Adminhtml\Source\AcceptedCards;
 use Lunar\Payment\Gateway\Http\Client\TransactionAuthorize;
 
 /**
  * Class ConfigProvider
  */
-class ConfigProvider implements ConfigProviderInterface {
-	const PLUGIN_CODE = 'lunarpaymentmethod';
+class ConfigProvider implements ConfigProviderInterface
+{
 	const PLUGIN_VERSION = '1.1.0';
+
+	const LUNAR_PAYMENT_CODE = 'lunarpaymentmethod';
+	const MOBILEPAY_CODE = 'lunarmobilepay';
+
 	protected $scopeConfig;
 	protected $_cart;
 	protected $_assetRepo;
@@ -34,6 +33,14 @@ class ConfigProvider implements ConfigProviderInterface {
 	protected $locale;
 	protected $cards;
 	protected $helper;
+
+	protected $paymentMethods = [];
+
+	private $order = null;
+	private string $paymentMethodCode = '';
+	private string $transactionMode = '';
+	private string $isActive = '';
+
 
 	public function __construct(
 		ScopeConfigInterface $scopeConfig,
@@ -43,7 +50,8 @@ class ConfigProvider implements ConfigProviderInterface {
 		StoreManagerInterface $storeManager,
 		Resolver $locale,
 		AcceptedCards $cards,
-		Helper $helper
+		Helper $helper,
+		array $paymentMethods
 	) {
 		$this->scopeConfig             = $scopeConfig;
 		$this->_cart                   = $cart;
@@ -53,6 +61,16 @@ class ConfigProvider implements ConfigProviderInterface {
 		$this->locale                  = $locale;
 		$this->cards                   = $cards;
 		$this->helper                  = $helper;
+		$this->paymentMethods		   = $paymentMethods;
+	}
+
+	/**
+	 *
+	 */
+	public function setOrder($order)
+	{
+		$this->order = $order;
+		return $this;
 	}
 
 	/**
@@ -60,23 +78,53 @@ class ConfigProvider implements ConfigProviderInterface {
 	 *
 	 * @return array
 	 */
-	public function getConfig() {
-		return [
-			'payment'      => [
-				self::PLUGIN_CODE => [
-					'transactionResults' => [
-						TransactionAuthorize::SUCCESS => __( 'Success' ),
-						TransactionAuthorize::FAILURE => __( 'Fraud' )
-					]
-				]
-			],
-			'description'  => $this->getDescription(),
-			'config'       => $this->getConfigJSON(),
-			'publicapikey' => $this->getPublicApiKey(),
-			'cards'        => $this->getAcceptedCards(),
-			'url'          => $this->getImageUrl(),
-			'multiplier'   => $this->getMultiplier( $this->getStoreCurrentCurrency() )
-		];
+	public function getConfig()
+    {
+		$configData = [];
+
+		foreach ($this->paymentMethods as $methodCode) {
+
+			$this->paymentMethodCode = $methodCode;
+
+			$this->transactionMode = $this->getStoreConfigValue('transaction_mode');
+			$this->isActive = $this->getStoreConfigValue('active');
+
+			/** Send config data only when active. */
+			if ($this->isActive) {
+				$configData['payment'][$methodCode]['transactionResults'] = [
+													TransactionAuthorize::SUCCESS => __('Success'),
+													TransactionAuthorize::FAILURE => __('Fraud'),
+												];
+
+				$configData[$methodCode] = [
+					'checkoutMode' => $this->getCheckoutMode(),
+					'description'  => $this->getDescription(),
+					'config'       => $this->getConfigJSON(),
+					'publicapikey' => $this->getPublicKey(),
+					'cards'        => $this->getAcceptedCards(),
+					'url'          => $this->getImageUrl(),
+					'multiplier'   => $this->getMultiplier($this->getStoreCurrentCurrency()),
+					'logsEnabled'  => $this->getLogsEnabled(),
+					'methodTitle'  => $this->getStoreConfigValue('title'),
+				];
+			}
+		}
+
+		return $configData;
+	}
+
+	/**
+	 * Retrieve Checkout Mode from DB
+	 *
+	 * @return string
+	 */
+	private function getCheckoutMode() {
+		$checkoutMode = $this->getStoreConfigValue('checkout_mode');
+		if (!$checkoutMode) {
+			$checkoutMode = 'before_order';
+		}
+
+		return $checkoutMode;
 	}
 
 	/**
@@ -85,8 +133,8 @@ class ConfigProvider implements ConfigProviderInterface {
 	 * @return string
 	 */
 
-	public function getDescription() {
-		return $this->scopeConfig->getValue( 'payment/lunarpaymentmethod/description', ScopeInterface::SCOPE_STORE );
+	private function getDescription() {
+		return $this->getStoreConfigValue('description');
 	}
 
 	/**
@@ -95,27 +143,31 @@ class ConfigProvider implements ConfigProviderInterface {
 	 * @return array
 	 */
 
-	public function getImageUrl() {
-		$acceptedcards = $this->getAcceptedCards();
-		$selectedcards = explode( ",", $acceptedcards );
+	private function getImageUrl() {
 
-		$finalcards = array();
-		$key        = 0;
-		foreach ( $selectedcards as $value ) {
-			$finalcards[ $key ] = $this->_assetRepo->getUrl( 'Lunar_Payment::images/paymenticons/' . $value . '.svg' );
-			$key                = $key + 1;
+		if (self::MOBILEPAY_CODE == $this->paymentMethodCode) {
+			return [$this->_assetRepo->getUrl( 'Lunar_Payment::images/paymenticons/mobilepay-logo.png' )];
 		}
 
-		return $finalcards;
+		$acceptedCards = $this->getAcceptedCards();
+		$selectedCards = explode( ",", $acceptedCards );
+
+		$finalCards = array();
+		foreach ($selectedCards as $value) {
+			$finalCards[] = $this->_assetRepo->getUrl( 'Lunar_Payment::images/paymenticons/' . $value . '.svg' );
+		}
+
+		return $finalCards;
 	}
 
 	/**
 	 * Get quote object associated with cart. By default it is current customer session quote
-	 *
-	 * @return Quote
 	 */
+	private function _getQuote() {
+		if ($this->order) {
+			return $this->cartRepositoryInterface->get( $this->order->getQuoteId() );
+		}
 
-	protected function _getQuote() {
 		return $this->_cart->getQuote();
 	}
 
@@ -125,8 +177,8 @@ class ConfigProvider implements ConfigProviderInterface {
 	 * @return string
 	 */
 
-	public function getPopupTitle() {
-		$title = $this->scopeConfig->getValue( 'payment/lunarpaymentmethod/popup_title', ScopeInterface::SCOPE_STORE );
+	private function getPopupTitle() {
+		$title = $this->getStoreConfigValue('popup_title');
 		if ( ! $title ) {
 
 			$title =$this->_storeManager->getStore()->getName();
@@ -135,8 +187,8 @@ class ConfigProvider implements ConfigProviderInterface {
 		return $title;
 	}
 
-	public function getLogsEnabled() {
-		$enabled = $this->scopeConfig->getValue( 'payment/lunarpaymentmethod/enable_logs', ScopeInterface::SCOPE_STORE );
+	private function getLogsEnabled() {
+		$enabled = $this->getStoreConfigValue('enable_logs');
 
 		return $enabled === "1";
 	}
@@ -147,8 +199,8 @@ class ConfigProvider implements ConfigProviderInterface {
 	 * @return string
 	 */
 
-	public function getAcceptedCards() {
-		return $this->scopeConfig->getValue( 'payment/lunarpaymentmethod/acceptedcards', ScopeInterface::SCOPE_STORE );
+	private function getAcceptedCards() {
+		return $this->getStoreConfigValue('acceptedcards');
 	}
 
 	/**
@@ -157,13 +209,11 @@ class ConfigProvider implements ConfigProviderInterface {
 	 * @return string
 	 */
 
-	public function getPublicApiKey() {
-		$mode = $this->scopeConfig->getValue( 'payment/lunarpaymentmethod/transaction_mode', ScopeInterface::SCOPE_STORE );
-		$key  = "";
-		if ( $mode == "test" ) {
-			$key = $this->scopeConfig->getValue( 'payment/lunarpaymentmethod/test_api_key', ScopeInterface::SCOPE_STORE );
-		} else if ( $mode == "live" ) {
-			$key = $this->scopeConfig->getValue( 'payment/lunarpaymentmethod/live_api_key', ScopeInterface::SCOPE_STORE );
+	private function getPublicKey() {
+		$key = $this->getStoreConfigValue('live_public_key');
+
+		if ('test' == $this->transactionMode) {
+			$key = $this->getStoreConfigValue('test_public_key');
 		}
 
 		return $key;
@@ -175,7 +225,7 @@ class ConfigProvider implements ConfigProviderInterface {
 	 * @return string
 	 */
 
-	public function getStoreCurrentCurrency() {
+	private function getStoreCurrentCurrency() {
 		return $this->_storeManager->getStore()->getCurrentCurrency()->getCode();
 
 	}
@@ -188,56 +238,76 @@ class ConfigProvider implements ConfigProviderInterface {
 	 * @return float|int
 	 */
 
-	public function getMultiplier( $currency ) {
+	private function getMultiplier( $currency ) {
 		return $this->helper->getCurrencyMultiplier( $currency );
 
 	}
 
-	public function getAmount( $currency,$amount ) {
+	private function getAmount( $currency,$amount ) {
 		return $this->helper->getAmount( $currency,$amount );
 
 	}
 
-	public function getExponent( $currency ) {
+	private function getExponent( $currency ) {
 		return $this->helper->getCurrency( $currency )['exponent'];
 
 	}
+
 
 	/**
 	 * Retrieve config values for popup of payment method
 	 *
 	 * @return string
 	 */
-
-	public function getConfigJSON() {
-		$test_mode  = $this->scopeConfig->getValue( 'payment/lunarpaymentmethod/transaction_mode', ScopeInterface::SCOPE_STORE );
+	private function getConfigJSON() {
 		$quote    	= $this->_getQuote();
 		$title    	= $this->getPopupTitle();
 		$currency 	= $this->getStoreCurrentCurrency();
 		$total      = $quote->getGrandTotal();
 
 		$amount = $this->getAmount($currency,$total);
-
 		$exponent = $this->getExponent($currency);
 
-		$email    = $quote->getBillingAddress()->getEmail();
+
 		$products = array();
 		foreach ( $quote->getAllVisibleItems() as $item ) {
 			$product    = array(
 				'ID'       => $item->getProductId(),
 				'SKU'      => $item->getSku(),
 				'name'     => $item->getName(),
-				'quantity' => $item->getQty()
+				'quantity' => $item->getQty(),
+				'Unit Price'  => number_format($item->getPriceInclTax() ?? 0.0, $exponent),
 			);
+
+			if ($item->getQty() > 1) {
+				$product['Total Price'] = number_format($item->getRowTotalInclTax() ?? 0.0, $exponent);
+			}
+
 			$products[] = $product;
 		}
 
-		$quoteId 	  = $quote->getId();
-		$quote        = $this->cartRepositoryInterface->get( $quote->getId() );
+		if ( ! $this->order) {
+			$quoteId = $quote->getId();
+			$quote   = $this->cartRepositoryInterface->get( $quote->getId() );
+		}
+
 		$customerData = $quote->getCustomer();
+		$email        = $quote->getBillingAddress()->getEmail();
+		$name         = $quote->getCustomer()->getFirstName() . " " . $quote->getCustomer()->getLastName();
 		$address      = $quote->getBillingAddress();
-		$name         = $customerData->getFirstName() . " " . $customerData->getLastName();
-		$logsEnabled  = $this->getLogsEnabled();
+
+        if ( ! $email ) { $email = $quote->getCustomerEmail(); }
+        if ( ! $name ) { $name = $quote->getCustomerName(); }
+
+        if ( ! $address) {
+            $address = $quote->getShippingAddress();
+        }
+
+        $customerAddress = $address->getStreet()[0] . ", "
+							. $address->getCity() . ", "
+							. $address->getRegion() . " "
+							. $address->getPostcode() . ", "
+							. $address->getCountryId();
 
 		$objectManager = ObjectManager::getInstance();
 		$ip            = $objectManager->get( 'Magento\Framework\HTTP\PhpEnvironment\RemoteAddress' );
@@ -246,23 +316,20 @@ class ConfigProvider implements ConfigProviderInterface {
 			'name'    => $name,
 			'email'   => $email,
 			'phoneNo' => $address->getTelephone(),
-			'address' => "",
+			'address' => $customerAddress,
 			'IP'      => $ip->getRemoteAddress()
 		);
 
+
 		$productMetadata = $objectManager->get( 'Magento\Framework\App\ProductMetadataInterface' );
 		$magentoVersion  = $productMetadata->getVersion();
-
 		$platform = array(
 			'name'    => 'Magento',
 			'version' => $magentoVersion
 		);
 
-
-		$version = self::PLUGIN_VERSION;
-
 		return [
-			'test'    		=> $test_mode,
+			'test'    		=> $this->transactionMode,
 			'title'    		=> $title,
 			'amount'   		=> [
 				'currency' => $currency,
@@ -271,13 +338,34 @@ class ConfigProvider implements ConfigProviderInterface {
 			],
 			'locale'   		=> $this->locale->getLocale(),
 			'custom'   		=> [
-				'quoteId' 		=> $quoteId,
+				'quoteId' 		=> $quote->getId(),
 				'products'  	=> $products,
+                'shipping tax'  => number_format($quote->getShippingAddress()->getShippingInclTax() ?? 0.0, $exponent),
 				'customer'  	=> $customer,
 				'platform'  	=> $platform,
-				'pluginVersion' => $version,
-				'logsEnabled'   => $logsEnabled,
+				'pluginVersion' => self::PLUGIN_VERSION,
 			]
 		];
 	}
+
+	/**
+     * Get store config value
+     *
+     * @param string $configId
+     */
+    private function getStoreConfigValue($configKey)
+    {
+        $storeId = $this->_storeManager->getStore()->getId();
+
+        /**
+         * "path" is composed based on etc/adminhtml/system.xml as "section_id/group_id/field_id"
+         */
+        $configPath = 'payment/' . $this->paymentMethodCode . '/' . $configKey;
+
+        return $this->scopeConfig->getValue(
+            /*path*/ $configPath,
+            /*scopeType*/ ScopeInterface::SCOPE_STORE,
+			/*scopeCode*/ $storeId
+        );
+    }
 }

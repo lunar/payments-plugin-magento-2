@@ -8,16 +8,24 @@ use Magento\Framework\Controller\Result\JsonFactory;
 class Log extends Action {
 
   const MAIN_LOG_DIR = BP . DIRECTORY_SEPARATOR . "var" . DIRECTORY_SEPARATOR . "log";
-  const LOGS_DIR_NAME = self::MAIN_LOG_DIR . DIRECTORY_SEPARATOR . "lunar";
-  const LOGS_DATE_FORMAT = "Y-m-d-h-i-s";
+  const LOGS_DATE_FORMAT = "Y-m-d__h-i-s";
+
+  private string $LOGS_DIR_NAME = self::MAIN_LOG_DIR . DIRECTORY_SEPARATOR . "lunar";
 
   public function __construct(JsonFactory $resultJsonFactory, Context $context) {
     $this->resultJsonFactory = $resultJsonFactory;
     parent::__construct($context);
   }
 
+  /**
+   *
+   */
   public function execute() {
     $post = $this->getRequest()->getPostValue();
+
+    if ('lunarmobilepay' == ($post['method_code'] ?? '')) {
+      $this->LOGS_DIR_NAME = str_replace('lunar', 'lunarmobilepay', $this->LOGS_DIR_NAME);
+    }
 
     if (isset($post["export"])) {
       return $this -> export();
@@ -38,6 +46,9 @@ class Log extends Action {
     return $this -> log();
   }
 
+  /**
+   *
+   */
   private function writable() {
     $response = [
       "dir" => self::MAIN_LOG_DIR,
@@ -48,8 +59,11 @@ class Log extends Action {
     return $result->setJsonData(json_encode($response));
   }
 
+  /**
+   *
+   */
   private function deleteLogs() {
-    $files = glob(self::LOGS_DIR_NAME . DIRECTORY_SEPARATOR . "*.log");
+    $files = glob($this->LOGS_DIR_NAME . DIRECTORY_SEPARATOR . "*.log");
     foreach($files as $file) {
       unlink($file);
     }
@@ -57,19 +71,25 @@ class Log extends Action {
     return null;
   }
 
+  /**
+   *
+   */
   private function hasLogs() {
-    $files = glob(self::LOGS_DIR_NAME . DIRECTORY_SEPARATOR . "*.log");
+    $files = glob($this->LOGS_DIR_NAME . DIRECTORY_SEPARATOR . "*.log");
     $response = json_encode(array("hasLogs" => count($files) > 0));
     $result = $this->resultJsonFactory->create();
     return $result->setJsonData(count($files) > 0);
   }
 
+  /**
+   *
+   */
   private function export() {
-    $filename = self::LOGS_DIR_NAME . DIRECTORY_SEPARATOR . "export.zip";
+    $filename = $this->LOGS_DIR_NAME . DIRECTORY_SEPARATOR . "export.zip";
     $zip = new \ZipArchive();
     $zip->open($filename, \ZipArchive::CREATE);
 
-    $files = glob(self::LOGS_DIR_NAME . DIRECTORY_SEPARATOR . "*.log");
+    $files = glob($this->LOGS_DIR_NAME . DIRECTORY_SEPARATOR . "*.log");
     foreach($files as $file) {
       $zip -> addFile($file, basename($file));
     }
@@ -83,17 +103,19 @@ class Log extends Action {
     return $result->setJsonData($content);
   }
 
+  /**
+   *
+   */
   private function log() {
     $post = $this->getRequest()->getPostValue();
 
-    if (!is_dir(self::LOGS_DIR_NAME)) {
-      mkdir(self::LOGS_DIR_NAME);
+    if (!is_dir($this->LOGS_DIR_NAME)) {
+      mkdir($this->LOGS_DIR_NAME);
     }
-
 
     $date = date(self::LOGS_DATE_FORMAT, ($post["date"] / 1000));
     $id = $post["context"]["custom"]["quoteId"];
-    $filename = self::LOGS_DIR_NAME . DIRECTORY_SEPARATOR . $date . "___" . $id . ".log";
+    $filename = $this->LOGS_DIR_NAME . DIRECTORY_SEPARATOR . $date . "___" . $id . ".log";
 
     if (!file_exists($filename)) {
       $separator = "============================================================";
