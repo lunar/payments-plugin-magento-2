@@ -26,15 +26,15 @@ use Lunar\Payment\Model\Adminhtml\Source\CheckoutMode;
 class ChangeConfigConditionally extends Value
 {
     public function __construct(
+        ConfigInterface $configInterface,
+        RequestInterface $request,
         Context $context,
         Registry $registry,
         ScopeConfigInterface $scopeConfigInterface,
         TypeListInterface $cacheTypeList,
         AbstractResource $resource = null,
         AbstractDb $resourceCollection = null,
-        array $data = [],
-        ConfigInterface $configInterface,
-        RequestInterface $request
+        array $data = []
     ) {
         $this->configInterface = $configInterface;
 
