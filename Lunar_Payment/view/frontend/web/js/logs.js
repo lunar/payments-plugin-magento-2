@@ -36,7 +36,8 @@ window.LunarLogger = {
     },
 
     enabled: function () {
-      var methodName = this.isMobilePay ? 'lunarmobilepay' : 'lunarpaymentmethod';
-      return window.checkoutConfig[methodName].logsEnabled;
+        var methodName = this.isMobilePay ? 'lunarmobilepay' : 'lunarpaymentmethod';
+        var methodConfig = window.checkoutConfig[methodName];
+        return methodConfig?.logsEnabled;
     }
   }
