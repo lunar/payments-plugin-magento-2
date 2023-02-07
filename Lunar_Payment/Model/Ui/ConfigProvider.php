@@ -37,9 +37,9 @@ class ConfigProvider implements ConfigProviderInterface
 	protected $paymentMethods = [];
 
 	private $order = null;
-	private string $paymentMethodCode = '';
-	private string $transactionMode = '';
-	private string $isActive = '';
+	private ?string $paymentMethodCode = '';
+	private ?string $transactionMode = '';
+	private ?string $isActive = '';
 
 
 	public function __construct(
