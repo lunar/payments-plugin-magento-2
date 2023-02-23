@@ -113,7 +113,7 @@ class Log extends Action {
       mkdir($this->LOGS_DIR_NAME);
     }
 
-    $date = date(self::LOGS_DATE_FORMAT, ($post["date"] / 1000));
+    $date = date(self::LOGS_DATE_FORMAT, (int)($post["date"] / 1000));
     $id = $post["context"]["custom"]["quoteId"];
     $filename = $this->LOGS_DIR_NAME . DIRECTORY_SEPARATOR . $date . "___" . $id . ".log";
 

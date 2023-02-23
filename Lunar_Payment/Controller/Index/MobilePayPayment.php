@@ -261,7 +261,7 @@ class MobilePayPayment implements ActionInterface
             return;
         }
 
-        $commentContentModified = str_replace('trxid_placeholder', $this->authorizationId, $orderHistory['comment']);
+        $commentContentModified = str_replace('trxid_placeholder', $this->authorizationId, $orderHistory['comment'] ?? '');
 
         $historyItem = $this->orderStatusRepository->get($orderHistory['entity_id']);
 
