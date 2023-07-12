@@ -94,7 +94,7 @@ class PaymentAdapter
     {
         /**
          * Get payment method code from cart if request came from frontend.
-         * It is null iat this point n the after_order flow, but will be obtained bellow from order.
+         * It is null at this point in the after_order flow, but will be obtained bellow from order.
          */
         $paymentMethodCode = $this->getPaymentMethodFromQuote();
 

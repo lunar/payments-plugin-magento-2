@@ -301,6 +301,9 @@ class MobilePayPayment implements ActionInterface
         if ('test' == $this->getStoreConfigValue('transaction_mode')) {
             $publicKey = $this->getStoreConfigValue('test_public_key');
             $this->args['test'] = new \stdClass();
+        }  else {
+            // Unset 'test' param for live mode
+            unset($this->args['test']);
         }
 
         $this->args['integration'] = ['key' => $publicKey];
