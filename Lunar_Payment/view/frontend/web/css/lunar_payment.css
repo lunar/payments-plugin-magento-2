@@ -2,6 +2,7 @@
 .mobilepay-logo img {
     vertical-align: middle;
     margin-right: 5px;
+    display: inline-block !important;
 }
 
 #lunarmobilepay_messages {
@@ -10,4 +11,8 @@
     padding: 2rem;
     font-size: 1.5rem;
     font-weight: bold;
+}
+
+.lunar-pm-description {
+    margin-left: 0 !important;
 }
