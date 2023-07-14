@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+
+<page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
+
+    <body>
+    
+        <referenceContainer name="sales.order.info.buttons">
+            <block
+                class="Magento\Sales\Block\Order\Info"
+                name="lunar.mobilepay.button"
+                template="Lunar_Payment::lunar_mobilepay_order_button.phtml"
+                cacheable="false"
+            />
+        </referenceContainer>
+
+    </body>
+</page>

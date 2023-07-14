@@ -1,11 +1,3 @@
-.settings
-.git
-.idea
-*.iml
-.vscode
+../.idea
 .DS_Store
-reports/*
-vendor
-buildInfo.json
-/.shuttle/
-/.dockerignore
+LunarPayment/.DS_Store

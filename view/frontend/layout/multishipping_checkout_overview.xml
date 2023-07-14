@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Copyright © 2016 Magento. All rights reserved.
+ * See COPYING.txt for license details.
+ */
+-->
+<page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" layout="1column" xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
+    <head>
+        <css src="Lunar_Payment/css/lunar_payment.css" />
+        <script src="https://sdk.paylike.io/a.js" src_type="url" />
+        <link src="Lunar_Payment::js/logs.js"/>
+    </head>
+
+    <body>
+      <referenceContainer name="content">
+          <block class="Magento\Multishipping\Block\Checkout\Billing" template="Lunar_Payment::multishipping.phtml" cacheable="false">
+              <arguments>
+                  <argument name="checkout_data" xsi:type="object">Magento\Multishipping\Block\DataProviders\Billing</argument>
+              </arguments>
+          </block>
+      </referenceContainer>
+    </body>
+</page>

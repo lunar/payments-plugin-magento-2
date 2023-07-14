@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Copyright © 2016 Magento. All rights reserved.
+ * See COPYING.txt for license details.
+ */
+-->
+
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:Event/etc/events.xsd">
+    <event name="payment_method_assign_data_lunarpaymentmethod">
+        <observer name="lunar_data_assign" instance="Lunar\Payment\Observer\DataAssignObserver" />
+    </event>
+    <event name="payment_method_assign_data_lunarmobilepay">
+        <observer name="lunar_mobilepay_data_assign" instance="Lunar\Payment\Observer\DataAssignObserver" />
+    </event>
+    <event name="checkout_submit_all_after">
+        <observer name="lunar_checkout_submit_all_after" instance="Lunar\Payment\Observer\CheckoutAllSubmitAfterObserver"/>
+        <observer name="lunar_mobilepay_checkout_submit_all_after" instance="Lunar\Payment\Observer\MobilePayCheckoutAllSubmitAfterObserver"/>
+    </event>
+    <event name="sales_order_payment_void">
+        <observer name="lunar_sales_order_payment_void" instance="Lunar\Payment\Observer\SalesOrderPaymentVoidObserver"/>
+    </event>
+</config>
