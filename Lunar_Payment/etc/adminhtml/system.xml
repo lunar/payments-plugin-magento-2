@@ -172,7 +172,6 @@
                     <label>Logo URL</label>
                     <comment>URL must start with "https://", and the image must have PNG, JPG, JPEG extension.</comment>
                     <backend_model>Lunar\Payment\Model\Adminhtml\Source\MobilePayLogoUrl</backend_model>
-                    <validate>required-entry</validate>
                 </field>
 
                 <field id="checkout_mode" translate="label comment" type="select" sortOrder="130" showInDefault="1" showInWebsite="1" showInStore="1">
