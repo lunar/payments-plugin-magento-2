@@ -28,6 +28,22 @@ require([
             }
 
 
+            // HOSTED CHECKOUT
+            if (Jquery('#lunarpaymenthosted').is(":checked")) {
+                addTriggerOnPrimaryButton('#lunarpaymenthosted-button');
+            } else {
+                Jquery('#lunarpaymenthosted').on('click', () => {
+                    addTriggerOnPrimaryButton('#lunarpaymenthosted-button');
+                });
+            }
+            if (Jquery('#lunarmobilepayhosted').is(":checked")) {
+                addTriggerOnPrimaryButton('#lunarmobilepayhosted-button');
+            } else {
+                Jquery('#lunarmobilepayhosted').on('click', () => {
+                    addTriggerOnPrimaryButton('#lunarmobilepayhosted-button');
+                });
+            }
+
             function addTriggerOnPrimaryButton(buttonSelector) {
                 Jquery(".aw-onestep-sidebar-wrapper button.action.primary.checkout")
                 .off("click")

@@ -38,20 +38,20 @@ use Lunar\Payment\Model\Adminhtml\Source\CaptureMode;
 /**
  * Controller responsible to manage MobilePay payments
  */
-class MobilePayPayment implements ActionInterface
+class HostedCheckout implements ActionInterface
 {
     const REMOTE_URL = 'https://b.paylike.io';
 
-    private string $mobilePayCode = ConfigProvider::MOBILEPAY_CODE;
-    private $hintsOrderKey = 'lunarmobilepay_hints';
+    private string $mobilePayCode = ConfigProvider::MOBILEPAY_HOSTED_CODE;
+    private $hintsOrderKey = 'lunarmobilepayhosted_hints';
 
     private bool $isInstantMode = false;
+    private ?int $orderId = null;
+    private bool $beforeOrder = true;
     private Order $order;
-    private $orderId = null;
     private array $args = [];
     private string $referer = '';
-    private string $orderBaseUrl = '';
-    private bool $beforeOrder = true;
+    private string $controllerURL = 'lunar/index/HostedCheckout';
     private string $authorizationId = '';
 
 
@@ -119,7 +119,7 @@ class MobilePayPayment implements ActionInterface
             unset($this->args['custom']['quoteId']);
             $this->args['custom'] = array_merge(['orderId' => $this->order->getIncrementId()], $this->args['custom']);
 
-            $this->referer = $baseUrl . 'lunar/index/MobilePayPayment/?order_id=' . $this->orderId;
+            $this->referer = $baseUrl . $this->controllerURL . '?order_id=' . $this->orderId;
         }
         else {
             $this->args = $requestInterface->getParam('args');
@@ -208,6 +208,56 @@ class MobilePayPayment implements ActionInterface
 
         return $this->jsonFactory->create()->setData(['data' => $response['data']]);
     }
+
+
+	// public function check_payment($order){
+
+	// 	$result = $this->lunar_client->payments()->fetch( $this->get_payment_intent( $order->id ) );
+
+	// 	if ( !$this->is_transaction_successful( $result, $order ) ) {
+	// 		WC_Lunar::log( 'Polling for order did not succeed:' . $result['id'] . PHP_EOL . ' -- ' . __FILE__ . ' - Line:' . __LINE__ );
+	// 		$order->add_order_note(
+	// 			__( 'Polling for order did not succeed:', 'lunar-payments-for-woocommerce' ) . PHP_EOL .
+	// 			$result['id']
+	// 		);
+
+	// 	} else {
+	// 		WC_Lunar::log( 'Polling succeded: '.$this->get_payment_intent( $order_id ) );
+	// 		$order->add_order_note(
+	// 			__( 'Polling for order worked, proceeding', 'lunar-payments-for-woocommerce' ) . PHP_EOL
+	// 		);
+	// 		if ( $order->get_total() > 0 ) {
+	// 			$this->handle_payment( $order );
+	// 		}
+	// 	}
+	// }
+
+	// protected function isTransactionSuccessful( $transaction, $order = null, $amount = false ) {
+	// 	// if we don't have the order, we only check the successful status.
+	// 	if ( ! $order ) {
+	// 		return true == $transaction['authorisationCreated'];
+	// 	}
+	// 	// we need to overwrite the amount in the case of a subscription.
+	// 	if ( ! $amount ) {
+	// 		$amount = $order->get_total();
+	// 	}
+	// 	$match_currency = dk_get_order_currency( $order ) == $transaction['amount']['currency'];
+	// 	$match_amount = $amount == $transaction['amount']['decimal'];
+
+	// 	return ( true == $transaction['authorisationCreated'] && $match_currency && $match_amount );
+	// }
+
+	// /**
+	//  * Get transaction signature
+	//  *
+	//  * @param $order_id
+	//  *
+	//  * @return string
+	//  */
+	// function get_signature( $order_id ) {
+	// 	return strtoupper( md5( $this->get_order_total() . $order_id . $this->public_key ) );
+	// }
+
 
     /**
      * SET TXN ID ON ORDER PAYMENT

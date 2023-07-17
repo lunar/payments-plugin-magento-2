@@ -20,13 +20,13 @@ define(
 
         return PaymentDefaultComponent.extend({
             defaults: {
-                template: 'Lunar_Payment/payment/paymentmethodtemplate',
+                template: 'Lunar_Payment/payment/lunarpaymenthosted',
                 transactionid: '',
-                lunarConfig: window.checkoutConfig.lunarpaymentmethod,
-                logger: window.LunarLogger
+                lunarHostedConfig: window.checkoutConfig.lunarpaymenthosted,
+                logger: window.LunarLoggerHosted
             },
 
-            displayPopup: function () {
+            showPopup: function () {
                 if (!CustomerEmailValidator.validate()) {
                     return false;
                 }
@@ -34,13 +34,13 @@ define(
                 var self = this;
 
                 /** Initialize object. */
-                var sdkClient = Paylike({key: this.lunarConfig.publicapikey});
+                var sdkClient = Paylike({key: this.lunarHostedConfig.publicapikey});
 
-                var paymentConfig = this.lunarConfig.config;
+                var paymentConfig = this.lunarHostedConfig.config;
                 var grandTotal = parseFloat(Quote.totals()['grand_total']);
                 var taxAmount = parseFloat(Quote.totals()['tax_amount']);
                 var totalAmount = grandTotal + taxAmount;
-                paymentConfig.amount.value = Math.round(totalAmount * this.lunarConfig.multiplier);
+                paymentConfig.amount.value = Math.round(totalAmount * this.lunarHostedConfig.multiplier);
 
                 /** Change test key value from string 'test' with a boolean value. */
                 paymentConfig.test = ('test' === paymentConfig.test) ? (true) : (false);
@@ -112,18 +112,18 @@ define(
                     }
                 });
             },
-            
+
             /** Returns send check to info */
             getMailingAddress: function () {
                 return window.checkoutConfig.payment.checkmo.mailingAddress;
             },
 
             getDescription: function () {
-                return this.lunarConfig.description;
+                return this.lunarHostedConfig.description;
             },
 
             getCardLogos: function () {
-                var logosString = this.lunarConfig.cards;
+                var logosString = this.lunarHostedConfig.cards;
 
                 if (!logosString) {
                     return '';
@@ -133,15 +133,15 @@ define(
                 var imghtml = "";
                 if (logos.length > 0) {
                     for (var i = 0; i < logos.length; i++) {
-                        imghtml = imghtml + "<img src='" + this.lunarConfig.url[i] + "' alt='" + logos[i] + "' width='45'>";
+                        imghtml = imghtml + "<img src='" + this.lunarHostedConfig.url[i] + "' alt='" + logos[i] + "' width='45'>";
                     }
                 }
 
                 return imghtml;
             },
-
+            
             getTitle: function () {
-                return this.lunarConfig.methodTitle;
+                return this.lunarHostedConfig.methodTitle;
             },
 
             getData: function () {

@@ -1,0 +1,129 @@
+<style>
+  #lunarpaymenthosted_logs_buttons_container {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+  }
+
+  #lunarpaymenthosted_logs_message {
+    margin-top: 8px;
+  }
+</style>
+
+
+<div id="lunarpaymenthosted_logs_buttons_container">
+  <button id="lunarpaymenthosted_logs_export_button" disabled>Export logs</button>
+  <button id="lunarpaymenthosted_logs_delete_button" disabled>Delete logs</button>
+</div>
+<p id="lunarpaymenthosted_logs_message">this is a message</p>
+
+
+<script type="text/javascript">
+  /**
+   * Show/hide specific fields based on query parameter
+   */
+  if (
+    "?debug" !== document.location.search
+    && 'test' !== jQuery(`#row_payment_us_lunarpaymenthosted_transaction_mode option:selected`).val()
+  ) {
+      jQuery(`#row_payment_us_lunarpaymenthosted_transaction_mode`).hide();
+      jQuery(`#row_payment_us_lunarpaymenthosted_test_app_key`).hide();
+      jQuery(`#row_payment_us_lunarpaymenthosted_test_public_key`).hide();
+  }
+
+  let lunarHostedExportLogsButton = jQuery(`#lunarpaymenthosted_logs_export_button`);
+  let lunarHostedDeleteLogsButton = jQuery(`#lunarpaymenthosted_logs_delete_button`);
+  let lunarHostedLogsMessage = jQuery(`#lunarpaymenthosted_logs_message`);
+  let lunarHostedLogsEnabledSelector = jQuery(`#payment_us_lunarpaymenthosted_enable_logs`);
+
+  function download(filename, content) {
+      var a = document.createElement('a');
+      a.setAttribute('href', 'data:application/zip;base64, ' + content);
+      a.setAttribute('download', filename);
+      a.click();
+  }
+
+  jQuery.ajax({
+    url: "/lunar/index/Log",
+    type: 'POST',
+    dataType: 'text',
+    data: { "writable": 1 },
+    success: function (data) {
+      const response = JSON.parse(data);
+      if (response.writable) {
+        jQuery("lunarpaymenthosted_not_writable").remove();
+        lunarHostedLogsEnabledSelector.attr("disabled", false);
+      } else {
+        lunarHostedLogsEnabledSelector.val("0");
+        lunarHostedLogsEnabledSelector.attr("disabled", true);
+        lunarHostedLogsEnabledSelector.after('<p id="lunarpaymenthosted_not_writable" class="note" style="color: red; margin-top: 8px;">Cannot enable logs right now<br />Please make sure the following directory is writable:<br /><pre><small>'+response.dir+'</small></pre></p>');
+      }
+    },
+  });
+
+  function checkForLogs() {
+    jQuery.ajax({
+      url: "/lunar/index/Log",
+      type: 'POST',
+      dataType: 'text',
+      data: { "hasLogs": 1 },
+      success: function (data) {
+        if (!data) {
+          lunarHostedExportLogsButton.attr("disabled", true);
+          lunarHostedDeleteLogsButton.attr("disabled", true);
+          lunarHostedLogsMessage.html("No logs saved");
+        } else {
+          lunarHostedExportLogsButton.attr("disabled", false);
+          lunarHostedDeleteLogsButton.attr("disabled", false);
+          lunarHostedLogsMessage.html("");
+        }
+      }
+    });
+  }
+
+  checkForLogs();
+
+  lunarHostedDeleteLogsButton.on("click", (event) => {
+    event.preventDefault();
+
+    if (!confirm("Are you sure you want to delete the logs?")) {
+      return;
+    }
+
+    lunarHostedDeleteLogsButton.attr("disabled", true);
+    lunarHostedDeleteLogsButton.html("Loading...");
+
+    jQuery.ajax({
+      url: "/lunar/index/Log",
+      type: 'POST',
+      dataType: 'text',
+      data: { "delete": 1  , "method_code": "lunarpaymenthosted"},
+      success: function (data) {
+        lunarHostedLogsMessage.html("Logs deleted");
+        lunarHostedDeleteLogsButton.html("Delete logs");
+
+        setTimeout(checkForLogs, 5000);
+      }
+    });
+  });
+
+  lunarHostedExportLogsButton.on("click", (event) => {
+    event.preventDefault();
+
+    lunarHostedExportLogsButton.attr("disabled", true);
+    lunarHostedExportLogsButton.html("Loading...");
+
+    jQuery.ajax({
+      url: "/lunar/index/Log",
+      type: 'POST',
+      dataType: 'text',
+      data: { "export": 1 , "method_code": "lunarpaymenthosted"},
+      success: function (data) {
+        download("lunarPaymentHostedLogs.zip", data);
+
+        lunarHostedExportLogsButton.attr("disabled", false);
+        lunarHostedExportLogsButton.html("Export logs");
+      }
+    });
+  });
+</script>

@@ -20,10 +20,10 @@ define(
 
         return PaymentDefaultComponent.extend({
             defaults: {
-                template: 'Lunar_Payment/payment/mobilepaytemplate',
+                template: 'Lunar_Payment/payment/lunarmobilepayhosted',
                 transactionid: '',
                 publicApiKey: '',
-                mobilePayConfig: window.checkoutConfig.lunarmobilepay,
+                mobilePayConfig: window.checkoutConfig.lunarmobilepayhosted,
                 lastIframeId: 0,
                 iframeChallenges: [],
                 hints: [],
@@ -31,7 +31,8 @@ define(
                 beforeOrder: true,
 				paymentButtonSelector: '.action.primary.checkout',
                 redirectUrl: window.checkoutConfig.defaultSuccessPageUrl,
-                logger: window.LunarLogger
+                controllerURL: "lunar/index/HostedCheckout",
+                logger: window.LunarLoggerHosted,
             },
 
             /** @inheritdoc */
@@ -100,7 +101,7 @@ define(
                             },
                             success: function(data) {
                                 /** Replace default success url with call to our controller */
-                                window.location.replace(MageUrl.build('lunar/index/MobilePayPayment/?order_id=' + data.order_id));
+                                window.location.replace(MageUrl.build(self.controllerURL + '?order_id=' + data.order_id));
                             },
                             error: function(jqXHR, textStatus, errorThrown) {
                                 self.submitError('<div class="lunarmobilepay-error">' + errorThrown + '</div>');
@@ -119,7 +120,7 @@ define(
                     self.logger.log("Payment mode: " + paymentConfig.checkoutMode);
 
                     this.initiatePaymentServerCall(paymentConfig, function(response) {
-                            var $div = Jquery('#lunarmobilepay_messages');
+                            var $div = Jquery('#lunarmobilepayhosted_messages');
 
                             if(response.error){
                                 self.logger.log("Error occured: " + response.error);
@@ -184,7 +185,7 @@ define(
                 Jquery.ajax({
                     type: "POST",
                     dataType: "json",
-                    url: "/lunar/index/MobilePayPayment",
+                    url: "/" + self.controllerURL,
                     data: {
                         args: args,
                     },
@@ -228,7 +229,7 @@ define(
                 var method = response.method ?? 'GET';
                 var action = response.action ?? undefined;
                 var fields = response.fields ?? [];
-                var name = 'challenge-iframe';
+                var name = 'challenge-iframe-hosted';
                 var display = response.type === 'background-iframe' ? 'none' : 'block';
                 var src = method === 'GET' ? response.url : undefined;
                 var style = 'border: none; width: ' + width + 'px;height: ' + height + 'px;maxWidth:100%' + ';display:' + display + ';';
@@ -253,10 +254,10 @@ define(
 
                 }, iframeChallenge.timeout)
 
-                Jquery('#lunarmobilepay_messages').append($iframe);
+                Jquery('#lunarmobilepayhosted_messages').append($iframe);
 
                 if (display === 'block') {
-                    Jquery('#lunarmobilepay_messages').append($cancel).show();
+                    Jquery('#lunarmobilepayhosted_messages').append($cancel).show();
                     $cancel.on('click', function(e) {
                         e.preventDefault();
                         self.resetIframe(iframeChallenge);
@@ -304,6 +305,7 @@ define(
                 Jquery(this.paymentButtonSelector).prop('disabled', false);
             },
 
+            
             /** Returns send check to info */
             getMailingAddress: function () {
                 return window.checkoutConfig.payment.checkmo.mailingAddress;

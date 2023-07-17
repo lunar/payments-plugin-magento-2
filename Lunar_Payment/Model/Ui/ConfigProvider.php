@@ -25,6 +25,9 @@ class ConfigProvider implements ConfigProviderInterface
 
 	const LUNAR_PAYMENT_CODE = 'lunarpaymentmethod';
 	const MOBILEPAY_CODE = 'lunarmobilepay';
+	
+	const LUNAR_PAYMENT_HOSTED_CODE = 'lunarpaymenthosted';
+	const MOBILEPAY_HOSTED_CODE = 'lunarmobilepayhosted';
 
 	protected $scopeConfig;
 	protected $_cart;
@@ -39,7 +42,6 @@ class ConfigProvider implements ConfigProviderInterface
 	private $order = null;
 	private ?string $paymentMethodCode = '';
 	private ?string $transactionMode = '';
-	private ?string $isActive = '';
 
 
 	public function __construct(
@@ -85,12 +87,10 @@ class ConfigProvider implements ConfigProviderInterface
 		foreach ($this->paymentMethods as $methodCode) {
 
 			$this->paymentMethodCode = $methodCode;
-
 			$this->transactionMode = $this->getStoreConfigValue('transaction_mode');
-			$this->isActive = $this->getStoreConfigValue('active');
 
-			/** Send config data only when active. */
-			if ($this->isActive) {
+			/** Send config data only when a payment method is active. */
+			if ($this->getStoreConfigValue('active')) {
 				$configData['payment'][$methodCode]['transactionResults'] = [
 													TransactionAuthorize::SUCCESS => __('Success'),
 													TransactionAuthorize::FAILURE => __('Fraud'),
@@ -145,7 +145,7 @@ class ConfigProvider implements ConfigProviderInterface
 
 	private function getImageUrl() {
 
-		if (self::MOBILEPAY_CODE == $this->paymentMethodCode) {
+		if (in_array($this->paymentMethodCode, [self::MOBILEPAY_CODE, self::MOBILEPAY_HOSTED_CODE])) {
 			return [$this->_assetRepo->getUrl( 'Lunar_Payment::images/paymenticons/mobilepay-logo.png' )];
 		}
 
@@ -200,7 +200,7 @@ class ConfigProvider implements ConfigProviderInterface
 	 */
 
 	private function getAcceptedCards() {
-		return $this->getStoreConfigValue('acceptedcards');
+		return $this->getStoreConfigValue('acceptedcards') ?? '';
 	}
 
 	/**
@@ -343,7 +343,10 @@ class ConfigProvider implements ConfigProviderInterface
                 'shipping tax'  => number_format($quote->getShippingAddress()->getShippingInclTax() ?? 0.0, $exponent),
 				'customer'  	=> $customer,
 				'platform'  	=> $platform,
-				'pluginVersion' => self::PLUGIN_VERSION,
+				'pluginVersion' => [
+					'method' => $this->paymentMethodCode,					
+					'version' => self::PLUGIN_VERSION,					
+				],
 			]
 		];
 	}

@@ -21,7 +21,7 @@ class MobilePayConfigId extends Value
 
         /** Check if test mode & test key is valid. */
         if (! $configurationId) {
-            return $this;
+            throw new LocalizedException(__('The config id is required'));
         }
 
         if (strlen($configurationId) != 32) {

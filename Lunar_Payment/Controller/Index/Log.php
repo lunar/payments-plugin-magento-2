@@ -23,9 +23,9 @@ class Log extends Action {
   public function execute() {
     $post = $this->getRequest()->getPostValue();
 
-    if ('lunarmobilepay' == ($post['method_code'] ?? '')) {
-      $this->LOGS_DIR_NAME = str_replace('lunar', 'lunarmobilepay', $this->LOGS_DIR_NAME);
-    }
+    /** Specific folder name for each payment method */
+    $methodCode = $post['method_code'] ?? 'lunar';
+    $this->LOGS_DIR_NAME = str_replace('lunar', $methodCode, $this->LOGS_DIR_NAME);
 
     if (isset($post["export"])) {
       return $this -> export();

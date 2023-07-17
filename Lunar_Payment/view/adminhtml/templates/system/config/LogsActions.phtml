@@ -5,7 +5,7 @@
     justify-content: space-between;
   }
 
-  #lunarpaymentmethod_logs_logs_message {
+  #lunarpaymentmethod_logs_message {
     margin-top: 8px;
   }
 </style>
@@ -15,7 +15,7 @@
   <button id="lunarpaymentmethod_logs_export_button" disabled>Export logs</button>
   <button id="lunarpaymentmethod_logs_delete_button" disabled>Delete logs</button>
 </div>
-<p id="lunarpaymentmethod_logs_logs_message">this is a message</p>
+<p id="lunarpaymentmethod_logs_message">this is a message</p>
 
 
 <script type="text/javascript">
@@ -33,7 +33,7 @@
 
   let lunarExportLogsButton = jQuery(`#lunarpaymentmethod_logs_export_button`);
   let lunarDeleteLogsButton = jQuery(`#lunarpaymentmethod_logs_delete_button`);
-  let lunarLogsMessage = jQuery(`#lunarpaymentmethod_logs_logs_message`);
+  let lunarLogsMessage = jQuery(`#lunarpaymentmethod_logs_message`);
   let lunarLogsEnabledSelector = jQuery(`#payment_us_lunarpaymentmethod_enable_logs`);
 
   function download(filename, content) {
