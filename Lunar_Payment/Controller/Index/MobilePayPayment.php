@@ -62,8 +62,6 @@ class MobilePayPayment implements ActionInterface
 
     private string $mobilePayCode = ConfigProvider::MOBILEPAY_CODE;
     private $hintsOrderKey = 'lunarmobilepay_hints';
-
-    private bool $isInstantMode = false;
     private Order $order;
     private bool $isInstantMode = false;
     private $orderId = null;

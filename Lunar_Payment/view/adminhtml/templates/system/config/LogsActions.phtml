@@ -19,17 +19,6 @@
 
 
 <script type="text/javascript">
-  /**
-   * Show/hide specific fields based on query parameter
-   */
-  if (
-    "?debug" !== document.location.search
-    && 'test' !== jQuery(`#row_payment_us_lunarpaymentmethod_transaction_mode option:selected`).val()
-  ) {
-      jQuery(`#row_payment_us_lunarpaymentmethod_transaction_mode`).hide();
-      jQuery(`#row_payment_us_lunarpaymentmethod_test_app_key`).hide();
-      jQuery(`#row_payment_us_lunarpaymentmethod_test_public_key`).hide();
-  }
 
   let lunarExportLogsButton = jQuery(`#lunarpaymentmethod_logs_export_button`);
   let lunarDeleteLogsButton = jQuery(`#lunarpaymentmethod_logs_delete_button`);

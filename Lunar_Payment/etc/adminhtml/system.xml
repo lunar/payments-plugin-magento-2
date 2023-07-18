@@ -6,6 +6,34 @@
         
             <group id="lunarpaymentmethod" translate="label" type="text" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1">
                 <label>Lunar</label>
+                <comment>
+                    <![CDATA[
+                        <script type="text/javascript">
+                            /**
+                             *   Show/hide test fields based on query parameter
+                             */
+                            jQuery(document).ready(() => {
+                                if ("?debug" !== document.location.search) {
+                                    if ('test' !== jQuery(`#row_payment_us_lunarpaymentmethod_transaction_mode option:selected`).val()) {
+                                        jQuery(`#row_payment_us_lunarpaymentmethod_transaction_mode`).hide();
+                                    }
+
+                                    if ('test' !== jQuery(`#row_payment_us_lunarmobilepay_transaction_mode option:selected`).val()) {
+                                        jQuery(`#row_payment_us_lunarmobilepay_transaction_mode`).hide();
+                                    }
+
+                                    if ('test' !== jQuery(`#row_payment_us_lunarpaymenthosted_transaction_mode option:selected`).val()) {
+                                        jQuery(`#row_payment_us_lunarpaymenthosted_transaction_mode`).hide();
+                                    }
+
+                                    if ('test' !== jQuery(`#row_payment_us_lunarmobilepayhosted_transaction_mode option:selected`).val()) {
+                                        jQuery(`#row_payment_us_lunarmobilepayhosted_transaction_mode`).hide();
+                                    }
+                                }
+                            })
+                        </script>
+                    ]]>
+                </comment>
 
                 <field id="active" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Enable Lunar</label>
@@ -42,12 +70,18 @@
                     <label>Test mode App Key</label>
                     <comment>Get it from your Lunar dashboard</comment>
                     <backend_model>Lunar\Payment\Model\Adminhtml\Source\TestAppKey</backend_model>
+                    <depends>
+                        <field id="transaction_mode">test</field>
+                    </depends>
                 </field>
 
                 <field id="test_public_key" translate="label comment" type="text" sortOrder="80" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Test mode Public Key</label>
                     <comment>Get it from your Lunar dashboard</comment>
                     <backend_model>Lunar\Payment\Model\Adminhtml\Source\TestPublicKey</backend_model>
+                    <depends>
+                        <field id="transaction_mode">test</field>
+                    </depends>
                 </field>
 
                 <field id="live_app_key" translate="label comment" type="text" sortOrder="90" showInDefault="1" showInWebsite="1" showInStore="1">
@@ -132,12 +166,18 @@
                     <label>Test mode App Key</label>
                     <comment>Get it from your Lunar dashboard</comment>
                     <backend_model>Lunar\Payment\Model\Adminhtml\Source\TestAppKey</backend_model>
+                    <depends>
+                        <field id="transaction_mode">test</field>
+                    </depends>
                 </field>
 
                 <field id="test_public_key" translate="label comment" type="text" sortOrder="70" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Test mode Public Key</label>
                     <comment>Get it from your Lunar dashboard</comment>
                     <backend_model>Lunar\Payment\Model\Adminhtml\Source\TestPublicKey</backend_model>
+                    <depends>
+                        <field id="transaction_mode">test</field>
+                    </depends>
                 </field>
 
                 <field id="live_app_key" translate="label comment" type="text" sortOrder="80" showInDefault="1" showInWebsite="1" showInStore="1">
@@ -156,6 +196,10 @@
                     <label>MobilePay Configuration ID</label>
                     <comment>Email onlinepayments@lunar.app to get it</comment>
                     <backend_model>Lunar\Payment\Model\Adminhtml\Source\MobilePayConfigId</backend_model>
+                    <validate>required-entry</validate>
+                    <depends>
+                        <field id="active">1</field>
+                    </depends>
                 </field>
 
                 <field id="capture_mode" translate="label comment" type="select" sortOrder="110" showInDefault="1" showInWebsite="1" showInStore="1">
@@ -168,6 +212,10 @@
                     <label>Logo URL</label>
                     <comment>URL must start with "https://", and the image must have PNG, JPG, JPEG extension.</comment>
                     <backend_model>Lunar\Payment\Model\Adminhtml\Source\MobilePayLogoUrl</backend_model>
+                    <validate>required-entry</validate>
+                    <depends>
+                        <field id="active">1</field>
+                    </depends>
                 </field>
 
                 <field id="checkout_mode" translate="label comment" type="select" sortOrder="130" showInDefault="1" showInWebsite="1" showInStore="1">
@@ -256,12 +304,18 @@
                     <label>Test mode App Key</label>
                     <comment>Get it from your Lunar dashboard</comment>
                     <backend_model>Lunar\Payment\Model\Adminhtml\Source\TestAppKey</backend_model>
+                    <depends>
+                        <field id="transaction_mode">test</field>
+                    </depends>
                 </field>
 
                 <field id="test_public_key" translate="label comment" type="text" sortOrder="80" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Test mode Public Key</label>
                     <comment>Get it from your Lunar dashboard</comment>
                     <backend_model>Lunar\Payment\Model\Adminhtml\Source\TestPublicKey</backend_model>
+                    <depends>
+                        <field id="transaction_mode">test</field>
+                    </depends>
                 </field>
 
                 <field id="live_app_key" translate="label comment" type="text" sortOrder="90" showInDefault="1" showInWebsite="1" showInStore="1">
@@ -317,7 +371,7 @@
             </group>
 
             <!-- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -->
-            <!-- ++++++++++++++++++++++++++++++++++++++++++++++++++  MOBILE PAY CONFIG FIELDS ++++++++++++++++++++++++++++++++++++++++++++++++ -->
+            <!-- +++++++++++++++++++++++++++++++++++++++++++  MOBILE PAY HOSTED CONFIG FIELDS ++++++++++++++++++++++++++++++++++++++++++++++++ -->
             <!-- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -->
 
             <group id="lunarmobilepayhosted" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
@@ -346,12 +400,18 @@
                     <label>Test mode App Key</label>
                     <comment>Get it from your Lunar dashboard</comment>
                     <backend_model>Lunar\Payment\Model\Adminhtml\Source\TestAppKey</backend_model>
+                    <depends>
+                        <field id="transaction_mode">test</field>
+                    </depends>
                 </field>
 
                 <field id="test_public_key" translate="label comment" type="text" sortOrder="70" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Test mode Public Key</label>
                     <comment>Get it from your Lunar dashboard</comment>
                     <backend_model>Lunar\Payment\Model\Adminhtml\Source\TestPublicKey</backend_model>
+                    <depends>
+                        <field id="transaction_mode">test</field>
+                    </depends>
                 </field>
 
                 <field id="live_app_key" translate="label comment" type="text" sortOrder="80" showInDefault="1" showInWebsite="1" showInStore="1">
@@ -370,6 +430,10 @@
                     <label>MobilePay Configuration ID</label>
                     <comment>Email onlinepayments@lunar.app to get it</comment>
                     <backend_model>Lunar\Payment\Model\Adminhtml\Source\MobilePayConfigId</backend_model>
+                    <validate>required-entry</validate>
+                    <depends>
+                        <field id="active">1</field>
+                    </depends>
                 </field>
 
                 <field id="capture_mode" translate="label comment" type="select" sortOrder="110" showInDefault="1" showInWebsite="1" showInStore="1">
@@ -382,6 +446,10 @@
                     <label>Logo URL</label>
                     <comment>URL must start with "https://", and the image must have PNG, JPG, JPEG extension.</comment>
                     <backend_model>Lunar\Payment\Model\Adminhtml\Source\MobilePayLogoUrl</backend_model>
+                    <validate>required-entry</validate>
+                    <depends>
+                        <field id="active">1</field>
+                    </depends>
                 </field>
 
                 <field id="checkout_mode" translate="label comment" type="select" sortOrder="130" showInDefault="1" showInWebsite="1" showInStore="1">

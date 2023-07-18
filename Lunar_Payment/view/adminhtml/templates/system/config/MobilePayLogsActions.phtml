@@ -17,18 +17,6 @@
 
 
 <script type="text/javascript">
-  /**
-   * Show/hide specific fields based on query parameter
-   */
-  if (
-    "?debug" !== document.location.search
-    && 'test' !== jQuery(`#row_payment_us_lunarmobilepay_transaction_mode option:selected`).val()
-    ) {
-      jQuery(`#row_payment_us_lunarmobilepay_transaction_mode`).hide();
-      jQuery(`#row_payment_us_lunarmobilepay_test_app_key`).hide();
-      jQuery(`#row_payment_us_lunarmobilepay_test_public_key`).hide();
-  }
-
 
   let mobilepayExportLogsButton = jQuery(`#lunarmobilepay_logs_export_button`);
   let mobilepayDeleteLogsButton = jQuery(`#lunarmobilepay_logs_delete_button`);

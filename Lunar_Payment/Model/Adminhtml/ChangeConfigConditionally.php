@@ -15,6 +15,7 @@ use Magento\Framework\App\Config\ConfigResource\ConfigInterface;
 use Magento\Store\Model\ScopeInterface;
 use Magento\Framework\App\RequestInterface;
 
+use Lunar\Payment\Model\Ui\ConfigProvider;
 use Lunar\Payment\Model\Adminhtml\Source\CheckoutMode;
 
 /**
@@ -25,6 +26,8 @@ use Lunar\Payment\Model\Adminhtml\Source\CheckoutMode;
  */
 class ChangeConfigConditionally extends Value
 {
+    const MOBILEPAY_CODE = ConfigProvider::MOBILEPAY_CODE;
+
     public function __construct(
         ConfigInterface $configInterface,
         RequestInterface $request,
@@ -44,8 +47,8 @@ class ChangeConfigConditionally extends Value
         $this->configScope = $websiteId ? ScopeInterface::SCOPE_WEBSITE : ($storeId ? ScopeInterface::SCOPE_STORE : ScopeConfigInterface::SCOPE_TYPE_DEFAULT);
         $this->entityId = $websiteId ?? $storeId ?? 0; // set the default if the request did not come for either the website or the store
 
-        $this->paymentActionPath = 'payment/lunarmobilepay/payment_action';
-        // $this->checkoutModePath = 'payment/lunarmobilepay/checkout_mode';
+        $this->paymentActionPath = 'payment/' . self::MOBILEPAY_CODE . '/payment_action';
+        // $this->checkoutModePath = 'payment/' . self::MOBILEPAY_CODE . '/checkout_mode';
 
         parent::__construct($context, $registry, $scopeConfigInterface, $cacheTypeList, $resource, $resourceCollection, $data);
     }

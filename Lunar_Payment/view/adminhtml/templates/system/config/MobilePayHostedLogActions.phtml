@@ -17,18 +17,6 @@
 
 
 <script type="text/javascript">
-  /**
-   * Show/hide specific fields based on query parameter
-   */
-  if (
-    "?debug" !== document.location.search
-    && 'test' !== jQuery(`#row_payment_us_lunarmobilepayhosted_transaction_mode option:selected`).val()
-    ) {
-      jQuery(`#row_payment_us_lunarmobilepayhosted_transaction_mode`).hide();
-      jQuery(`#row_payment_us_lunarmobilepayhosted_test_app_key`).hide();
-      jQuery(`#row_payment_us_lunarmobilepayhosted_test_public_key`).hide();
-  }
-
 
   let mobilepayHostedExportLogsButton = jQuery(`#lunarmobilepayhosted_logs_export_button`);
   let mobilepayHostedDeleteLogsButton = jQuery(`#lunarmobilepayhosted_logs_delete_button`);
