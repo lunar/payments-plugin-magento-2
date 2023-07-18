@@ -5,7 +5,9 @@ use Magento\Framework\App\Action\Action;
 use Magento\Framework\App\Action\Context;
 use Magento\Framework\Controller\Result\JsonFactory;
 
-class Log extends Action {
+class Log extends Action 
+{
+  protected $resultJsonFactory;
 
   const MAIN_LOG_DIR = BP . DIRECTORY_SEPARATOR . "var" . DIRECTORY_SEPARATOR . "log";
   const LOGS_DATE_FORMAT = "Y-m-d__h-i-s";

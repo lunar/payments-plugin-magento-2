@@ -29,15 +29,16 @@ class ConfigProvider implements ConfigProviderInterface
 	const LUNAR_PAYMENT_HOSTED_CODE = 'lunarpaymenthosted';
 	const MOBILEPAY_HOSTED_CODE = 'lunarmobilepayhosted';
 
-	protected $scopeConfig;
-	protected $_cart;
-	protected $_assetRepo;
-	protected $_storeManager;
-	protected $locale;
-	protected $cards;
-	protected $helper;
+	private $scopeConfig;
+	private $_cart;
+	private $_assetRepo;
+	private $cartRepositoryInterface;
+	private $_storeManager;
+	private $locale;
+	private $cards;
+	private $helper;
 
-	protected $paymentMethods = [];
+	private $paymentMethods = [];
 
 	private $order = null;
 	private ?string $paymentMethodCode = '';
