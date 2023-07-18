@@ -1,21 +1,25 @@
 <?php
 
-
 namespace Lunar\Payment\Gateway\Http\Client;
 
-use Lunar\Payment\Model\Adapter\PaymentAdapter;
 use Magento\Payment\Gateway\Http\ClientException;
 use Magento\Payment\Gateway\Http\ClientInterface;
 use Magento\Payment\Gateway\Http\TransferInterface;
 use Magento\Payment\Model\Method\Logger;
+
 use Lunar\Payment\Helper\Data as Helper;
+use Lunar\Payment\Model\Adapter\PaymentAdapter;
 
 
 /**
  * Class AbstractTransaction
  */
 abstract class AbstractTransaction implements ClientInterface
-{
+{ 
+	protected $logger;
+	protected $adapter;
+	protected $helper;
+
 	public function __construct(
 								Logger $logger,
 								PaymentAdapter $adapter,

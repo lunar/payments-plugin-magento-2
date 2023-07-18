@@ -15,6 +15,10 @@ use Magento\Framework\Controller\Result\JsonFactory;
  */
 class GetOrderId implements ActionInterface
 {
+    private $jsonFactory;
+    private $requestInterface;
+    private $cartRepositoryInterface;
+
     public function __construct(
         JsonFactory $jsonFactory,
         RequestInterface $requestInterface,

@@ -18,6 +18,11 @@ use Lunar\Payment\lib\Lunar\Transaction;
  */
 class PaymentAdapter
 {
+    private $scopeConfig;
+    private $request;
+    private $orderRepository;
+    private $storeManager;
+    
     public function __construct(
             ScopeConfigInterface $scopeConfig,
             RequestInterface $request,

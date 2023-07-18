@@ -40,12 +40,31 @@ use Lunar\Payment\Model\Adminhtml\Source\CaptureMode;
  */
 class MobilePayPayment implements ActionInterface
 {
+    private $configProvider;
+    private $storeManager;
+    private $logger;
+    private $scopeConfig;
+    private $orderRepository;
+    private $jsonFactory;
+    private $requestInterface;
+    private $redirect;
+    private $redirectFactory;
+    private $response;
+    private $messageManager;
+    private $orderStatusRepository;
+    private $invoiceCollectionFactory;
+    private $invoiceService;
+    private $transactionFactory;
+    private $invoiceSender;
+    private $priceCurrencyInterface;
+
     const REMOTE_URL = 'https://b.paylike.io';
 
     private string $mobilePayCode = ConfigProvider::MOBILEPAY_CODE;
     private $hintsOrderKey = 'lunarmobilepay_hints';
 
     private Order $order;
+    private bool $isInstantMode = false;
     private $orderId = null;
     private array $args = [];
     private string $referer = '';
