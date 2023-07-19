@@ -45,8 +45,6 @@ define(
                     this.beforeOrder = false;
                 }
 
-                this.handleIframeMessage();
-
                 return this;
             },
 
@@ -73,7 +71,11 @@ define(
                 }
 
                 paymentConfig.custom.customer.phoneNo = Quote.billingAddress().telephone;
-                paymentConfig.custom.customer.address = Quote.billingAddress().street[0] + ", " + Quote.billingAddress().city + ", " + Quote.billingAddress().region + " " + Quote.billingAddress().postcode + ", " + Quote.billingAddress().countryId;
+                paymentConfig.custom.customer.address = Quote.billingAddress().street[0] + ", " 
+                                                        + Quote.billingAddress().city + ", " 
+                                                        + Quote.billingAddress().region + " " 
+                                                        + Quote.billingAddress().postcode + ", " 
+                                                        + Quote.billingAddress().countryId;
 
                 let isMobilePay = true;
                 self.logger.setContext(paymentConfig, Jquery, MageUrl, isMobilePay);
@@ -95,13 +97,14 @@ define(
                         await Jquery.ajax({
                             type: "POST",
                             dataType: "json",
-                            url: "/lunar/index/GetOrderId",
+                            url: "/" + self.controllerURL,
                             data: {
-                                quote_id: paymentConfig.custom.quoteId,
+                                payment_intent: true,
                             },
                             success: function(data) {
                                 /** Replace default success url with call to our controller */
-                                window.location.replace(MageUrl.build(self.controllerURL + '?order_id=' + data.order_id));
+                                // window.location.replace(MageUrl.build(self.controllerURL + '?order_id=' + data.order_id));
+                                window.location.replace(data.payment_intent_url);
                             },
                             error: function(jqXHR, textStatus, errorThrown) {
                                 self.submitError('<div class="lunarmobilepay-error">' + errorThrown + '</div>');
@@ -118,66 +121,58 @@ define(
                 /** BEFORE order flow. */
                 else {
                     self.logger.log("Payment mode: " + paymentConfig.checkoutMode);
-
+                    
                     this.initiatePaymentServerCall(paymentConfig, function(response) {
-                            var $div = Jquery('#lunarmobilepayhosted_messages');
 
-                            if(response.error){
-                                self.logger.log("Error occured: " + response.error);
+                        if(response.error){
+                            self.logger.log("Error occured: " + response.error);
 
-                                self.submitError(response.error);
-                                return false;
+                            self.submitError(response.error);
+                            return false;
+                        }
+
+                        if (response.data.authorizationId !== undefined && response.data.authorizationId !== "") {
+                            self.transactionid = response.data.authorizationId;
+                            self.logger.log("Payment successfull. Authorization ID: " + response.data.authorizationId);
+                            /*
+                                * In order to intercept the error of placeOrder request we need to monkey-patch
+                                * the `addErrorMessage` function of the messageContainer:
+                                * - first we duplicate the function on the same `messageContainer`, keeping the same `this`
+                                * - next we override the function with a new one, were we log the error, and then we call the old function
+                                */
+                            self.messageContainer.oldAddErrorMessage = self.messageContainer.addErrorMessage;
+                            self.messageContainer.addErrorMessage = async function (messageObj) {
+                                await self.logger.log("Place order failed. Reason: " + messageObj.message);
+
+                                self.messageContainer.oldAddErrorMessage(messageObj);
                             }
 
-                            if (response.data.authorizationId !== undefined && response.data.authorizationId !== "") {
-                                self.transactionid = response.data.authorizationId;
-                                self.logger.log("Payment successfull. Authorization ID: " + response.data.authorizationId);
-                                /*
-                                 * In order to intercept the error of placeOrder request we need to monkey-patch
-                                 * the `addErrorMessage` function of the messageContainer:
-                                 * - first we duplicate the function on the same `messageContainer`, keeping the same `this`
-                                 * - next we override the function with a new one, were we log the error, and then we call the old function
-                                 */
-                                self.messageContainer.oldAddErrorMessage = self.messageContainer.addErrorMessage;
-                                self.messageContainer.addErrorMessage = async function (messageObj) {
-                                    await self.logger.log("Place order failed. Reason: " + messageObj.message);
-
-                                    self.messageContainer.oldAddErrorMessage(messageObj);
-                                }
-
-                                /*
-                                 * In order to log the placeOrder success, we need deactivate
-                                 * the redirect after order placed and call it manually, after
-                                 * we send the logs to the server
-                                 */
-                                self.redirectAfterPlaceOrder = false;
-                                self.afterPlaceOrder = async function () {
-                                    await self.logger.log("Order placed successfully");
-                                    RedirectOnSuccessAction.execute();
-                                }
-
-                                /* Everything is now setup, we can try placing the order */
-                                self.placeOrder();
+                            /*
+                                * In order to log the placeOrder success, we need deactivate
+                                * the redirect after order placed and call it manually, after
+                                * we send the logs to the server
+                                */
+                            self.redirectAfterPlaceOrder = false;
+                            self.afterPlaceOrder = async function () {
+                                await self.logger.log("Order placed successfully");
+                                RedirectOnSuccessAction.execute();
                             }
 
-                            self.hints = response.data.hints;
+                            /* Everything is now setup, we can try placing the order */
+                            self.placeOrder();
+                        }
 
-                            if (response.data.type === 'iframe' || response.data.type === 'background-iframe') {
-                                $div.css('background-color', '#fff');
-                                // $div.css('border', 'solid 2px #000'); // if needed
-                                self.showMobilePayIframe(response.data);
-                                return false;
-                            }
+                        // // self.disablePaymentButton();
 
-                            if (response.data.type === 'redirect') {
-                                window.location.href = response.data.url;
-                                return false;
-                            }
-                        });
+                        // if (response.data.type === 'redirect') {
+                        //     window.location.href = response.data.url;
+                        //     return false;
+                        // }
+                    });
                 }
             },
 
-            initiatePaymentServerCall: function(args, success) {
+            initiatePaymentServerCall: function(args, successCallback) {
                 var self = this;
 
                 args.hints = self.hints;
@@ -190,7 +185,7 @@ define(
                         args: args,
                     },
                     success: function(data) {
-                        success(data)
+                        successCallback(data)
                     },
                     error: function(jqXHR, textStatus, errorThrown) {
                         self.logger.log("Error occurred on server call: " + errorThrown);
@@ -203,98 +198,8 @@ define(
                 });
             },
 
-            handleIframeMessage: function() {
-                var self = this;
-
-                window.addEventListener('message', function(e) {
-                    for (var key in self.iframeChallenges) {
-                        var challenge = self.iframeChallenges[key];
-                        if (challenge.iframe[0].contentWindow !== e.source) {
-                            continue;
-                        }
-                        if (typeof e.data !== 'object' || e.data === null || ! e.data.hints) {
-                            continue;
-                        }
-                        challenge.resolve(e.data)
-                        self.resetIframe(challenge);
-                    }
-                })
-            },
-
-            showMobilePayIframe: function(response) {
-                var self = this;
-
-                var width = response.width ?? 1;
-                var height = response.height ?? 1;
-                var method = response.method ?? 'GET';
-                var action = response.action ?? undefined;
-                var fields = response.fields ?? [];
-                var name = 'challenge-iframe-hosted';
-                var display = response.type === 'background-iframe' ? 'none' : 'block';
-                var src = method === 'GET' ? response.url : undefined;
-                var style = 'border: none; width: ' + width + 'px;height: ' + height + 'px;maxWidth:100%' + ';display:' + display + ';';
-                var $iframe = Jquery('<iframe name="' + name + '" class="lunarmobilepay-iframe" src="' + src + '" style="' + style + '" frameborder="0" allowfullscreen></iframe>');
-                var $cancel = Jquery('<button class="lunarmobilepay-cancel-button" style="margin:5px 0;" type="button">Cancel</button>');
-
-                var iframeChallenge = {
-                    iframe: $iframe, resolve: function(data) {
-                        self.hints = self.hints.concat(data.hints);
-                        self.makePayment();
-                    },
-                    cancelButton: $cancel,
-                    timeout: response.timeout ?? 1000 * 60 * 35,
-                    id: ++self.lastIframeId,
-                }
-                this.iframeChallenges.push(iframeChallenge);
-                this.disablePaymentButton();
-                this.timer = setTimeout(function() {
-                    self.resetIframe(iframeChallenge);
-                    // on timeout we try again
-                    self.makePayment();
-
-                }, iframeChallenge.timeout)
-
-                Jquery('#lunarmobilepayhosted_messages').append($iframe);
-
-                if (display === 'block') {
-                    Jquery('#lunarmobilepayhosted_messages').append($cancel).show();
-                    $cancel.on('click', function(e) {
-                        e.preventDefault();
-                        self.resetIframe(iframeChallenge);
-                    });
-                }
-
-                if (method === 'POST') {
-                    this.handleIframePost(name, action, fields);
-                }
-            },
-
-            handleIframePost: function(name, action, fields) {
-                var $div = Jquery('<form method="POST" action="' + action + '" target="' + name + '"></form>');
-                Object.entries(fields).map(function(field) {
-                    $div.append('<input type="hidden" name="' + field.name + '" value="' + field.value + '"/>');
-                });
-                Jquery(document.body).append($div);
-                $div.submit()
-                $div.remove();
-            },
-
-            resetIframe: function(iframeChallenge) {
-                clearTimeout(this.timer);
-                this.removeIframeChallenge(iframeChallenge);
-            },
-
-            removeIframeChallenge: function(iframeChallenge) {
-                this.iframeChallenges = this.iframeChallenges.filter(function(object) {
-                    object.id !== iframeChallenge.id
-                });
-                iframeChallenge.iframe.remove();
-                iframeChallenge.cancelButton.remove();
-                this.enablePaymentButton();
-            },
-
             submitError: function(errorMessage) {
-				Jquery('#lunarmobilepay_messages').prepend(errorMessage).show()
+				Jquery('#lunarmobilepayhosted_messages').prepend(errorMessage).show()
             },
 
             disablePaymentButton: function() {

@@ -34,16 +34,35 @@ use GuzzleHttp\Exception\GuzzleException;
 
 use Lunar\Payment\Model\Ui\ConfigProvider;
 use Lunar\Payment\Model\Adminhtml\Source\CaptureMode;
+use Lunar\Lunar;
 
 /**
- * Controller responsible to manage MobilePay payments
+ * Controller responsible to manage Hosted Checkout payments
  */
 class HostedCheckout implements ActionInterface
-{
-    const REMOTE_URL = 'https://b.paylike.io';
+{    
+    private $configProvider;
+    private $storeManager;
+    private $logger;
+    private $scopeConfig;
+    private $orderRepository;
+    private $jsonFactory;
+    private $requestInterface;
+    private $redirect;
+    private $redirectFactory;
+    private $response;
+    private $messageManager;
+    private $orderStatusRepository;
+    private $invoiceCollectionFactory;
+    private $invoiceService;
+    private $transactionFactory;
+    private $invoiceSender;
+    private $priceCurrencyInterface;
 
-    private string $mobilePayCode = ConfigProvider::MOBILEPAY_HOSTED_CODE;
-    private $hintsOrderKey = 'lunarmobilepayhosted_hints';
+    const REMOTE_URL = 'https://pay.lunar.money';
+
+    private Lunar $lunarApiClient;
+    private $intentIdKey = '_lunar_intent_id';
 
     private bool $isInstantMode = false;
     private ?int $orderId = null;
@@ -51,8 +70,11 @@ class HostedCheckout implements ActionInterface
     private Order $order;
     private array $args = [];
     private string $referer = '';
+    private string $referrerURL = '';
+    private string $paymentIntentId = '';
     private string $controllerURL = 'lunar/index/HostedCheckout';
     private string $authorizationId = '';
+    private string $paymentMethodCode = '';
 
 
     public function __construct(
@@ -109,8 +131,9 @@ class HostedCheckout implements ActionInterface
 
             $this->order = $this->orderRepository->get($this->orderId);
             $this->configProvider->setOrder($this->order);
+            $this->paymentMethodCode = $this->order->getPayment()->getMethod();
 
-            $configData = $this->configProvider->getConfig()[$this->mobilePayCode]['config'];
+            $configData = $this->configProvider->getConfig()[$this->paymentMethodCode]['config'];
 
             $this->args['amount'] = $configData['amount'];
             $this->args['custom'] = $configData['custom'];
@@ -123,142 +146,165 @@ class HostedCheckout implements ActionInterface
         }
         else {
             $this->args = $requestInterface->getParam('args');
+            $this->paymentMethodCode = $this->args['custom']['pluginVersion']['method'];
         }
+
+        $privateKey = 'test' == $this->getStoreConfigValue('transaction_mode')
+                        ? $this->getStoreConfigValue('test_app_key')
+                        : $this->getStoreConfigValue('live_app_key');
+
+        /** API Client instance */
+        $this->lunarApiClient = new Lunar($privateKey);
     }
+
 
     /**
      * EXECUTE
      */
     public function execute()
     {
-        $this->getHintsFromOrder();
-
+        // $this->getHintsFromOrder();
+        
         $this->setArgs();
-
-        $response = $this->mobilePayPayment();
-
-        if (isset($response['error'])) {
-            if ($this->beforeOrder) {
-                return $this->sendJsonResponse($response);
-            } else {
-                $errorMessage = $response['error'] . '.<br> Please try again or contact system administrator.'; // <a href="/">Go to homepage</a>';
-                return $this->redirectToErrorPage($errorMessage);
-            }
+        
+        if ( ! $this->checkPaymentIntentIdOnOrder()) {
+            $this->paymentIntentId = $this->lunarApiClient->payments()->create($this->args);
         }
 
-        $this->authorizationId = $response['data']['authorizationId'] ?? '';
+        $this->referrerURL = $this->storeManager->getStore()->getBaseUrl() . 'checkout/onepage/success';
 
-        if($this->authorizationId) {
-            /**
-             * Before order, send json response to front component
-             */
-            if ($this->beforeOrder) {
-                return $this->sendJsonResponse($response);
-            }
+		$redirectUrl = self::REMOTE_URL . "?id=$this->paymentIntentId";
 
-            /**
-             * After order, redirect to success after set trxid on quote payment and capture if instant mode.
-             */
-
-            /** Update info on order payment */
-            $this->setTxnIdOnOrderPayment();
-            $this->updateLastOrderStatusHistory();
+        return $this->response->setRedirect($dataRedirectUrl);
 
 
-            if ($this->isInstantMode) {
-                // the order state will be changed after invoice creation
-                $this->createInvoiceForOrder();
-            }
-            else {
-                /**
-                 * @see https://magento.stackexchange.com/questions/225524/magento-2-show-pending-payment-order-in-store-front/280227#280227
-                 * Important note for Pending Payments
-                 * If you have a "pending payment" status order,
-                 * Magento 2 will cancel the order automatically after 8 hours if the payment status doesn't change.
-                 * To change that, go to Stores > Configuration > Sales > Order Cron Settings
-                 * and change the Lifetime to a greater value.
-                 *
-                 * If pending_payment orders not show in front, @see https://magento.stackexchange.com/a/225531/100054
-                 */
-                $this->order->setState(Order::STATE_PENDING_PAYMENT)->setStatus(Order::STATE_PENDING_PAYMENT);
-            }
+        // $this->authorizationId = $response['data']['authorizationId'] ?? '';
 
-            $this->order->save();
+        // if($this->authorizationId) {
+        //     /**
+        //      * Before order, send json response to front component
+        //      */
+        //     if ($this->beforeOrder) {
+        //         return $this->sendJsonResponse($response);
+        //     }
 
-            $dataRedirectUrl = $this->storeManager->getStore()->getBaseUrl() . 'checkout/onepage/success';
-            return $this->response->setRedirect($dataRedirectUrl);
-        }
+        //     /**
+        //      * After order, redirect to success after set trxid on quote payment and capture if instant mode.
+        //      */
 
-        if (($response['data']['type'] ?? '') === 'redirect' ) {
-            $dataRedirectUrl = $response['data']['url'];
-            return $this->response->setRedirect($dataRedirectUrl);
-        }
+        //     /** Update info on order payment */
+        //     $this->setTxnIdOnOrderPayment();
+        //     $this->updateLastOrderStatusHistory();
 
-        /**
-         * Redirect to error page if response is iframe & checkout mode is after_order
-         */
-        if (
-            ! $this->beforeOrder
-            && isset($response['data']['type'])
-            && ($response['data']['type'] === 'iframe')
-        ) {
-            $errorMessage = 'An error occured in server response. Please try again or contact system administrator.'; // <a href="/">Go to homepage</a>'
-            return $this->redirectToErrorPage($errorMessage);
-        }
 
-        return $this->jsonFactory->create()->setData(['data' => $response['data']]);
+        //     if ($this->isInstantMode) {
+        //         // the order state will be changed after invoice creation
+        //         $this->createInvoiceForOrder();
+        //     }
+        //     else {
+        //         /**
+        //          * @see https://magento.stackexchange.com/questions/225524/magento-2-show-pending-payment-order-in-store-front/280227#280227
+        //          * Important note for Pending Payments
+        //          * If you have a "pending payment" status order,
+        //          * Magento 2 will cancel the order automatically after 8 hours if the payment status doesn't change.
+        //          * To change that, go to Stores > Configuration > Sales > Order Cron Settings
+        //          * and change the Lifetime to a greater value.
+        //          *
+        //          * If pending_payment orders not show in front, @see https://magento.stackexchange.com/a/225531/100054
+        //          */
+        //         $this->order->setState(Order::STATE_PENDING_PAYMENT)->setStatus(Order::STATE_PENDING_PAYMENT);
+        //     }
+
+        //     $this->order->save();
+
+        //     $dataRedirectUrl = $this->storeManager->getStore()->getBaseUrl() . 'checkout/onepage/success';
+        //     return $this->response->setRedirect($dataRedirectUrl);
+        // }
+
+        // if (($response['data']['type'] ?? '') === 'redirect' ) {
+        //     $dataRedirectUrl = $response['data']['url'];
+        //     return $this->response->setRedirect($dataRedirectUrl);
+        // }
+
+        // /**
+        //  * Redirect to error page if response is iframe & checkout mode is after_order
+        //  */
+        // if (
+        //     ! $this->beforeOrder
+        //     && isset($response['data']['type'])
+        //     && ($response['data']['type'] === 'iframe')
+        // ) {
+        //     $errorMessage = 'An error occured in server response. Please try again or contact system administrator.'; // <a href="/">Go to homepage</a>'
+        //     return $this->redirectToErrorPage($errorMessage);
+        // }
+
+        // return $this->jsonFactory->create()->setData(['data' => $response['data']]);
     }
 
+    /**
+     * SET ARGS
+     */
+    private function setArgs()
+    {
+        
+        $publicKey = $this->getStoreConfigValue('live_public_key');
+        if ('test' == $this->getStoreConfigValue('transaction_mode')) {
+            $publicKey = $this->getStoreConfigValue('test_public_key');
+            // $title = $this->args['title'];
+            // $this->args = $this->get_test_args();
+            // $this->args['test'] = new \stdClass();
+        }  else {
+            // Unset 'test' param for live mode
+            unset($this->args['test']);
+        }
 
-	// public function check_payment($order){
+        $this->args['integration'] = [
+            'key' => $publicKey,
+            'name' => $this->args['title'],
+            // 'name' => $this->args['title'] ?? $title,
+            'logo' =>  $this->getStoreConfigValue('logo_url'),
+        ];
 
-	// 	$result = $this->lunar_client->payments()->fetch( $this->get_payment_intent( $order->id ) );
+        if ($this->getStoreConfigValue('configuration_id')) {
+            $this->args['mobilePayConfiguration'] = [
+                'configurationId' => $this->getStoreConfigValue('configuration_id'),
+                'logo'            => $this->getStoreConfigValue('logo_url'),
+            ];
+        }
 
-	// 	if ( !$this->is_transaction_successful( $result, $order ) ) {
-	// 		WC_Lunar::log( 'Polling for order did not succeed:' . $result['id'] . PHP_EOL . ' -- ' . __FILE__ . ' - Line:' . __LINE__ );
-	// 		$order->add_order_note(
-	// 			__( 'Polling for order did not succeed:', 'lunar-payments-for-woocommerce' ) . PHP_EOL .
-	// 			$result['id']
-	// 		);
+        $this->args['amount']['decimal'] = $this->args['amount']['value'] ?? 0;
 
-	// 	} else {
-	// 		WC_Lunar::log( 'Polling succeded: '.$this->get_payment_intent( $order_id ) );
-	// 		$order->add_order_note(
-	// 			__( 'Polling for order worked, proceeding', 'lunar-payments-for-woocommerce' ) . PHP_EOL
-	// 		);
-	// 		if ( $order->get_total() > 0 ) {
-	// 			$this->handle_payment( $order );
-	// 		}
-	// 	}
-	// }
+        $this->args['redirectUrl'] = $this->referrerURL;
+        $this->args['preferredPaymentMethod'] = $this->paymentMethodCode == ConfigProvider::MOBILEPAY_HOSTED_CODE ? 'mobilePay' : 'card';
 
-	// protected function isTransactionSuccessful( $transaction, $order = null, $amount = false ) {
-	// 	// if we don't have the order, we only check the successful status.
-	// 	if ( ! $order ) {
-	// 		return true == $transaction['authorisationCreated'];
-	// 	}
-	// 	// we need to overwrite the amount in the case of a subscription.
-	// 	if ( ! $amount ) {
-	// 		$amount = $order->get_total();
-	// 	}
-	// 	$match_currency = dk_get_order_currency( $order ) == $transaction['amount']['currency'];
-	// 	$match_amount = $amount == $transaction['amount']['decimal'];
+        /** Unset some unnecessary args */
+        unset(
+            $this->args['title'],
+            $this->args['locale'],
+            $this->args['amount']['value'],
+            $this->args['checkoutMode']
+        );
 
-	// 	return ( true == $transaction['authorisationCreated'] && $match_currency && $match_amount );
-	// }
+        // unset($this->args['test']);
+    }
 
-	// /**
-	//  * Get transaction signature
-	//  *
-	//  * @param $order_id
-	//  *
-	//  * @return string
-	//  */
-	// function get_signature( $order_id ) {
-	// 	return strtoupper( md5( $this->get_order_total() . $order_id . $this->public_key ) );
-	// }
+    /**
+     * ERROR
+     */
+    private function error($message)
+    {
+        return ['error' => $message];
+    }
 
+    /**
+     * SUCCESS
+     */
+    private function success($data)
+    {
+        return ['data' => $data];
+    }
 
+    
     /**
      * SET TXN ID ON ORDER PAYMENT
      */
@@ -343,274 +389,27 @@ class HostedCheckout implements ActionInterface
     }
 
     /**
-     * SET ARGS
-     */
-    private function setArgs()
-    {
-        $publicKey = $this->getStoreConfigValue('live_public_key');
-
-        if ('test' == $this->getStoreConfigValue('transaction_mode')) {
-            $publicKey = $this->getStoreConfigValue('test_public_key');
-            $this->args['test'] = new \stdClass();
-        }  else {
-            // Unset 'test' param for live mode
-            unset($this->args['test']);
-        }
-
-        $this->args['integration'] = ['key' => $publicKey];
-
-        $this->args['mobilepay'] = [
-            'configurationId' => $this->getStoreConfigValue('configuration_id'),
-            'logo'            => $this->getStoreConfigValue('logo_url'),
-        ];
-
-        if ($this->referer) {
-            $returnUrl = $this->referer;
-        } else {
-            /** Checkout payment step url */
-            $returnUrl = $this->redirect->getRefererUrl() . '/#payment'; // or $this->redirect->getRedirectUrl();
-        }
-
-        if ($returnUrl && !$this->beforeOrder) {
-            $this->args['mobilepay']['returnUrl'] = $returnUrl;
-        }
-
-        $this->args['hints'] = $this->args['hints'] ?? [];
-
-        $this->args['amount']['exponent'] = (int) ($this->args['amount']['exponent'] ?? 0);
-    }
-
-    /**
-     * MOBILEPAY PAYMENT
-     */
-    private function mobilePayPayment()
-    {
-        /**
-        * Request
-        */
-        $response = $this->request('/payments');
-
-        if ( ! $response) {
-            return $this->error('There was an error. Please try again later');
-        }
-
-        if (isset($response['authorizationId'])) {
-            return $this->success($response);
-        }
-
-
-        if (!isset($response['challenges'])) {
-            return $this->error('Payment failed');
-        }
-
-        $challengeResponse = $this->handleFirstChallenge($response['challenges']);
-
-
-        if ($challengeResponse['error'] ?? '') {
-            return $this->error('There was an error. Please try again later');
-        }
-
-        if (!$challengeResponse) {
-            return $this->mobilePayPayment();
-        }
-
-        $challengeResponse['hints'] = $this->args['hints'];
-
-        return $this->success($challengeResponse);
-    }
-
-    /**
-     * ERROR
-     */
-    private function error($message)
-    {
-        return ['error' => $message];
-    }
-
-    /**
-     * SUCCESS
-     */
-    private function success($data)
-    {
-        return ['data' => $data];
-    }
-
-    /**
-     * HANDLE FIRST CHALLENGE
-     */
-    protected function handleFirstChallenge($challenges)
-    {
-        $challenge = $challenges[0]; // we prioritize the first one always
-
-        if (count($challenges) > 1) {
-            if ($this->beforeOrder) {
-                $challenge = $this->searchForChallenge($challenges, 'iframe');
-            } else {
-                $challenge = $this->searchForChallenge($challenges, 'redirect');
-            }
-
-            if (!$challenge) {
-                $challenge = $challenges[0];
-            }
-        }
-
-        /**
-         * Request
-         */
-        $response = $this->request($challenge['path']);
-
-        if ($response['error'] ?? '') {
-            return $this->error($response['error']);
-        }
-
-        if (isset($response['code']) && isset($response['message'])) {
-            return $this->error($response['message']);
-        }
-
-        if ( ! isset($response['hints'])) {
-            $notBefore = \DateTime::createFromFormat('Y-m-d\TH:i:s+', $response['notBefore']);
-			$now = new \DateTime();
-			$timeDiff = ($notBefore->getTimestamp() - $now->getTimestamp()) + 1; // add 1 second to account for miliseconds loss
-
-            if ($timeDiff > 0) {
-                sleep($timeDiff);
-            }
-
-            return $this->handleFirstChallenge($challenges);
-        }
-
-        $this->args['hints'] = array_merge($this->args['hints'], $response['hints']);
-
-        $this->saveHintsOnOrder();
-
-        switch ($challenge['type']) {
-            case 'fetch':
-            case 'poll':
-                return [];
-                break;
-
-            case 'redirect':
-                $response['type'] = $challenge['type'];
-                // store hints for this order for 30 minutes
-                return $response;
-                break;
-
-            case 'iframe':
-            case 'background-iframe':
-                $response['type'] = $challenge['type'];
-                return $response;
-                break;
-
-            default:
-                return $this->error('Unknown challenge type: ' . $challenge['type']);
-        }
-
-        return $response;
-    }
-
-
-    /**
-     * SEARCH FOR CHALLENGE
-     */
-    protected function searchForChallenge($challenges, $type)
-    {
-        $this->logger->debug(json_encode($challenges, JSON_PRETTY_PRINT));
-
-        foreach ($challenges as $challenge) {
-            if ($challenge['type'] === $type) {
-                return $challenge;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * REQUEST
-     */
-    protected function request($path)
-    {
-        $this->logger->debug("Calling $path with hints: " . json_encode($this->args['hints'] ?? [], JSON_PRETTY_PRINT));
-
-        /** Unset some unnecessary args */
-        unset(
-            $this->args['title'],
-            $this->args['locale'],
-            $this->args['checkoutMode']
-        );
-
-        $response = $this->makeCurlRequest(
-            $path,
-            Request::HTTP_METHOD_POST,
-            $params = [
-                'headers' => [
-                    'Content-Type'   => "application/json",
-                    'Accept-Version' => 4
-                ],
-                'version' => '1.0',
-                'body'        => json_encode($this->args),
-                'redirection' => 5,
-                'timeout'     => 45,
-                'blocking'    => true,
-                'cookies'     => []
-            ]
-        );
-
-        $this->logger->debug("Response: " . json_encode($response, JSON_PRETTY_PRINT));
-
-        return $response;
-    }
-
-
-    /**
-     * MAKE CURL REQUEST
-     */
-    private function makeCurlRequest(
-        string $uriEndpoint,
-        string $requestMethod = Request::HTTP_METHOD_GET,
-        array $params = []
-    ) {
-        try {
-            $guzzleClient = new GuzzleClient([
-                    'base_uri' => self::REMOTE_URL,
-                    'allow_redirects' => true,
-            ]);
-
-            $response = $guzzleClient->request($requestMethod, $uriEndpoint, $params);
-            $response = json_decode($response->getBody()->getContents(), true);
-
-        } catch (GuzzleException $exception) {
-            $response = ['error' => $exception->getMessage()];
-        }
-
-        return $response;
-    }
-
-    /**
      *
      */
-    private function getHintsFromOrder()
+    private function checkPaymentIntentIdOnOrder()
     {
         if ($this->beforeOrder) {
-            return;
+            return false;
         }
 
         $payment = $this->order->getPayment();
         $additionalInformation = $payment->getAdditionalInformation();
-        $orderHints = [];
-        if ($additionalInformation && array_key_exists($this->hintsOrderKey, $additionalInformation)) {
-            $orderHints = $additionalInformation[$this->hintsOrderKey];
+
+        if ($additionalInformation && array_key_exists($this->intentIdKey, $additionalInformation)) {
+            return $this->paymentIntentId = $additionalInformation[$this->intentIdKey];
         }
 
-        if ($orderHints) {
-            $this->args['hints'] = $orderHints;
-        }
+        return false;
     }
-
     /**
      *
      */
-    private function saveHintsOnOrder()
+    private function savePaymentIntentIdOnOrder()
     {
         if ($this->beforeOrder) {
             return;
@@ -619,11 +418,11 @@ class HostedCheckout implements ActionInterface
         // preserve already existing additional data
         $payment = $this->order->getPayment();
         $additionalInformation = $payment->getAdditionalInformation();
-        $additionalInformation[$this->hintsOrderKey] = $this->args['hints'];
+        $additionalInformation[$this->intentIdKey] = $this->args['payment_intent_id'];
         $payment->setAdditionalInformation($additionalInformation);
         $payment->save();
 
-        $this->logger->debug("Storing hints: " . json_encode($this->args['hints'], JSON_PRETTY_PRINT));
+        $this->logger->debug("Storing payment intent: " . json_encode($this->args['payment_intent_id'], JSON_PRETTY_PRINT));
     }
 
     /**
@@ -673,11 +472,9 @@ class HostedCheckout implements ActionInterface
      */
     private function getStoreConfigValue($configKey)
     {
-        /** This is not imperative to be used. It works even without it */
+        /** This is not imperative to be used. It works even without it (?) */
         $storeId = $this->storeManager->getStore()->getId();
-
-        /** "path" is composed based on etc/adminhtml/system.xml as "section_id/group_id/field_id" */
-        $configPath = 'payment/' . $this->mobilePayCode . '/' . $configKey;
+        $configPath = 'payment/' . $this->paymentMethodCode . '/' . $configKey;
 
         return $this->scopeConfig->getValue(
             /*path*/ $configPath,
@@ -705,5 +502,34 @@ class HostedCheckout implements ActionInterface
         $dataRedirectUrl = 'lunar/index/displayerror';
         $resultRedirect = $this->redirectFactory->create();
         return $resultRedirect->setPath($dataRedirectUrl);
-    }
+	}
+
+
+    /**
+     * 
+     */
+    private function get_test_args(): array 
+    {
+		return [
+			"card"        => [
+				"scheme"  => "supported",
+				"code"    => "valid",
+				"status"  => "valid",
+				"limit"   => [
+					"decimal"  => "399.95",
+					"currency" => "USD"
+				],
+				"balance" => [
+					"decimal"  => "399.95",
+					"currency" => "USD"
+				]
+			],
+			"fingerprint" => "success",
+			"tds"         => array(
+				"fingerprint" => "success",
+				"challenge"   => true,
+				"status"      => "authenticated"
+			),
+		];
+	}
 }

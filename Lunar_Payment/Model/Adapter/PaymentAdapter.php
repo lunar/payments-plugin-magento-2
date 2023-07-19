@@ -117,8 +117,7 @@ class PaymentAdapter
 
             $orderStoreId = $order->getStore()->getId();
 
-            $paymentMethod = $order->getPayment()->getMethod();
-            $paymentMethodCode = $paymentMethod;
+            $paymentMethodCode = $order->getPayment()->getMethod();
         }
 
         /**

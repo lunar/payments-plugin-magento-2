@@ -434,7 +434,7 @@ class MobilePayPayment implements ActionInterface
             return $this->error($response['message']);
         }
 
-        if ( ! isset($response['hints'])) {
+        if ( ! isset($response['hints']) && isset($data['notBefore']) ) {
             $notBefore = \DateTime::createFromFormat('Y-m-d\TH:i:s+', $response['notBefore']);
 			$now = new \DateTime();
 			$timeDiff = ($notBefore->getTimestamp() - $now->getTimestamp()) + 1; // add 1 second to account for miliseconds loss
