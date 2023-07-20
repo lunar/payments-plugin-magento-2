@@ -324,31 +324,29 @@ class ConfigProvider implements ConfigProviderInterface
 
 		$productMetadata = $objectManager->get( 'Magento\Framework\App\ProductMetadataInterface' );
 		$magentoVersion  = $productMetadata->getVersion();
-		$platform = array(
-			'name'    => 'Magento',
-			'version' => $magentoVersion
-		);
 
 		return [
-			'test'    		=> $this->transactionMode,
-			'title'    		=> $title,
-			'amount'   		=> [
+			'test' => $this->transactionMode,
+			'title' => $title,
+			'amount' => [
 				'currency' => $currency,
 				'exponent' => $exponent,
 				'value'    => $amount,
+				'decimal'  => $total,
 			],
-			'locale'   		=> $this->locale->getLocale(),
-			'custom'   		=> [
-				'quoteId' 		=> $quote->getId(),
-				'products'  	=> $products,
-                'shipping tax'  => number_format($quote->getShippingAddress()->getShippingInclTax() ?? 0.0, $exponent),
-				'customer'  	=> $customer,
-				'platform'  	=> $platform,
-				'pluginVersion' => [
-					'method' => $this->paymentMethodCode,					
-					'version' => self::PLUGIN_VERSION,					
+			'locale' => $this->locale->getLocale(),
+			'custom' => [
+				'quoteId'      => $quote->getId(),
+				'products'     => $products,
+                'shipping tax' => number_format($quote->getShippingAddress()->getShippingInclTax() ?? 0.0, $exponent),
+				'customer'     => $customer,
+				'ecommerce' => [
+					'name'    => 'Magento',
+					'version' => $magentoVersion
 				],
-			]
+				'lunarPluginVersion' => self::PLUGIN_VERSION,
+				'paymentMethod'  => $this->paymentMethodCode,
+			],
 		];
 	}
 

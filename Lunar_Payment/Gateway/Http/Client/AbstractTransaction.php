@@ -77,7 +77,7 @@ abstract class AbstractTransaction implements ClientInterface
 	 * @param string $transactionId
 	 * @param array  $data
 	 *
-	 * @return Paylike response
+	 * @return Paylike|Lunar response
 	 */
 	abstract protected function process( $transactionid, array $data );
 }

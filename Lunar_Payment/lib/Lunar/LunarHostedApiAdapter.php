@@ -1,7 +1,8 @@
 <?php
 namespace Lunar\Payment\lib\Lunar;
+
 /**
- * Class ApiAdapter
+ * Class LunarHostedApiAdapter
  * @package Lunar
  * The adapter class taking care of the calls to the api.
  *
@@ -9,11 +10,11 @@ namespace Lunar\Payment\lib\Lunar;
  * so that this can be changed depending on the environment.
  *
  */
-if (!class_exists('Lunar\\ApiAdapter')) {
-    class ApiAdapter
+if (!class_exists('Lunar\\LunarHostedApiAdapter')) {
+    class LunarHostedApiAdapter
     {
         use LunarApiAdapterTrait;
 
-        private $apiUrl = 'https://api.paylike.io';
+        private $apiUrl = 'https://api.prod.lunarway.com/merchant-payments/v1';
     }
 }

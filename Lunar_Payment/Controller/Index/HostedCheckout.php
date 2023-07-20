@@ -64,6 +64,7 @@ class HostedCheckout implements ActionInterface
     private Lunar $lunarApiClient;
     private $intentIdKey = '_lunar_intent_id';
 
+    private string $baseURL = '';
     private bool $isInstantMode = false;
     private ?int $orderId = null;
     private bool $beforeOrder = true;
@@ -118,7 +119,7 @@ class HostedCheckout implements ActionInterface
 
         $this->isInstantMode = (CaptureMode::MODE_INSTANT == $this->getStoreConfigValue('capture_mode'));
 
-        $baseUrl = $this->storeManager->getStore()->getBaseUrl();
+        $this->baseURL = $this->storeManager->getStore()->getBaseUrl();
 
         /**
          * If request has order_id, the request is from a redirect (after_order)
@@ -142,11 +143,11 @@ class HostedCheckout implements ActionInterface
             unset($this->args['custom']['quoteId']);
             $this->args['custom'] = array_merge(['orderId' => $this->order->getIncrementId()], $this->args['custom']);
 
-            $this->referer = $baseUrl . $this->controllerURL . '?order_id=' . $this->orderId;
+            $this->referer = $this->baseURL . $this->controllerURL . '?order_id=' . $this->orderId;
         }
         else {
             $this->args = $requestInterface->getParam('args');
-            $this->paymentMethodCode = $this->args['custom']['pluginVersion']['method'];
+            $this->paymentMethodCode = $this->args['custom']['paymentMethod'];
         }
 
         $privateKey = 'test' == $this->getStoreConfigValue('transaction_mode')
@@ -167,15 +168,17 @@ class HostedCheckout implements ActionInterface
         
         $this->setArgs();
         
-        if ( ! $this->checkPaymentIntentIdOnOrder()) {
+        if ( ! $this->checkPaymentIntentOnOrder()) {
             $this->paymentIntentId = $this->lunarApiClient->payments()->create($this->args);
         }
 
-        $this->referrerURL = $this->storeManager->getStore()->getBaseUrl() . 'checkout/onepage/success';
+		$redirectUrl = self::REMOTE_URL . $this->paymentIntentId;
 
-		$redirectUrl = self::REMOTE_URL . "?id=$this->paymentIntentId";
+        // if ( ! $this->isInstantMode) {
+        //     $this->savePaymentIntentOnOrder();
+        // }
 
-        return $this->response->setRedirect($dataRedirectUrl);
+        return $this->response->setRedirect($redirectUrl);
 
 
         // $this->authorizationId = $response['data']['authorizationId'] ?? '';
@@ -252,7 +255,7 @@ class HostedCheckout implements ActionInterface
             $publicKey = $this->getStoreConfigValue('test_public_key');
             // $title = $this->args['title'];
             // $this->args = $this->get_test_args();
-            // $this->args['test'] = new \stdClass();
+            $this->args['test'] = new \stdClass();
         }  else {
             // Unset 'test' param for live mode
             unset($this->args['test']);
@@ -272,17 +275,24 @@ class HostedCheckout implements ActionInterface
             ];
         }
 
-        $this->args['amount']['decimal'] = $this->args['amount']['value'] ?? 0;
+        // $this->args['amount']['decimal'] = (string) ($this->args['amount']['value'] / 10 ** $this->args['amount']['exponent']) ?? 0;
+        // $this->args['custom']['orderId'] = $this->args['custom']['quoteId'];
 
-        $this->args['redirectUrl'] = $this->referrerURL;
+        // $this->args['redirectUrl'] = $this->storeManager->getStore()->getBaseUrl() . 'checkout/onepage/success';
+
+        $params = $this->beforeOrder ? '?quoteId=' : '?orderId=';
+        $this->args['redirectUrl'] = $this->baseURL . $this->controllerURL . $params . $this->args['custom']['quoteId'];
         $this->args['preferredPaymentMethod'] = $this->paymentMethodCode == ConfigProvider::MOBILEPAY_HOSTED_CODE ? 'mobilePay' : 'card';
 
         /** Unset some unnecessary args */
         unset(
+            // $this->args['test'],
             $this->args['title'],
             $this->args['locale'],
             $this->args['amount']['value'],
-            $this->args['checkoutMode']
+            $this->args['amount']['exponent'],
+            $this->args['checkoutMode'],
+            // $this->args['custom']['quoteId']
         );
 
         // unset($this->args['test']);
@@ -391,7 +401,7 @@ class HostedCheckout implements ActionInterface
     /**
      *
      */
-    private function checkPaymentIntentIdOnOrder()
+    private function checkPaymentIntentOnOrder()
     {
         if ($this->beforeOrder) {
             return false;
@@ -409,7 +419,7 @@ class HostedCheckout implements ActionInterface
     /**
      *
      */
-    private function savePaymentIntentIdOnOrder()
+    private function savePaymentIntentOnOrder()
     {
         if ($this->beforeOrder) {
             return;
@@ -418,11 +428,12 @@ class HostedCheckout implements ActionInterface
         // preserve already existing additional data
         $payment = $this->order->getPayment();
         $additionalInformation = $payment->getAdditionalInformation();
-        $additionalInformation[$this->intentIdKey] = $this->args['payment_intent_id'];
+        // preserve already existing additional data
+        $additionalInformation[$this->intentIdKey] = $this->paymentIntentId;
         $payment->setAdditionalInformation($additionalInformation);
         $payment->save();
 
-        $this->logger->debug("Storing payment intent: " . json_encode($this->args['payment_intent_id'], JSON_PRETTY_PRINT));
+        // $this->logger->debug("Storing payment intent: " . json_encode($this->paymentIntentId, JSON_PRETTY_PRINT));
     }
 
     /**
