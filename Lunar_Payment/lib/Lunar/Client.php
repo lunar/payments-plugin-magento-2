@@ -2,9 +2,9 @@
 
 namespace Lunar\Payment\lib\Lunar;
 
-include_once('LunarApiAdapterTrait');
+include_once( 'LunarApiAdapterTrait.php' );
 include_once( 'ApiAdapter.php' );
-include_once('LunarHostedApiAdapter');
+include_once( 'LunarHostedApiAdapter.php' );
 include_once( 'Transaction.php' );
 include_once( 'Card.php' );
 
@@ -29,7 +29,7 @@ if ( ! class_exists( 'Lunar\\Client' ) ) {
          * @param $privateApiKey
          * Set the api key for future calls
          */
-        public static function setKey( $privateApiKey, $paymentMethodCode = null ) {
+        public static function setKey( $privateApiKey, $paymentMethodCode = '' ) {
             // self::$adapter = new ApiAdapter( $privateApiKey );
             self::setAdapter($privateApiKey, $paymentMethodCode);
         }
@@ -40,7 +40,7 @@ if ( ! class_exists( 'Lunar\\Client' ) ) {
          *
          * @return bool|null|ApiAdapter
          */
-        public static function getAdapter( $privateApiKey = null, $paymentMethodCode = null ) {
+        public static function getAdapter( $privateApiKey = null, $paymentMethodCode = '' ) {
             if ( self::$adapter ) {
                 return self::$adapter;
             } else {
@@ -58,7 +58,7 @@ if ( ! class_exists( 'Lunar\\Client' ) ) {
          */
         private static function setAdapter($privateApiKey, $paymentMethodCode)
         {
-            if (false !== strpos($paymentMethodCode, 'hosted')) { // we can change to str_contains after a while
+            if ($paymentMethodCode != null && false !== strpos($paymentMethodCode, 'hosted')) { // we can change to str_contains after a while
                 self::$adapter = new LunarHostedApiAdapter($privateApiKey);
             } else {
                 self::$adapter = new ApiAdapter($privateApiKey);

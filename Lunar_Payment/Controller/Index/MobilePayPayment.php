@@ -503,7 +503,8 @@ class MobilePayPayment implements ActionInterface
         unset(
             $this->args['title'],
             $this->args['locale'],
-            $this->args['checkoutMode']
+            $this->args['checkoutMode'],
+            $this->args['amount']['decimal']
         );
 
         $response = $this->makeCurlRequest(

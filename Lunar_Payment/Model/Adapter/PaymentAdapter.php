@@ -54,12 +54,9 @@ class PaymentAdapter
     {
         $transactionMode = $this->getStoreConfigValue('transaction_mode');
 
-        $privateKey = '';
-
-        $privateKey = $this->getStoreConfigValue('live_app_key');
-        if($transactionMode == "test"){
-            $privateKey = $this->getStoreConfigValue('test_app_key');
-        }
+        $privateKey = "test" == $transactionMode
+                        ? $this->getStoreConfigValue('test_app_key')
+                        : $this->getStoreConfigValue('live_app_key');
 
         Client::setKey($privateKey, $this->paymentMethodCode);
     }
@@ -116,7 +113,7 @@ class PaymentAdapter
     private function getStoreId($order = null)
     {
         if ($this->order) {
-            return $order->getStore()->getId();
+            return $this->order->getStore()->getId();
         }
         
         /** FRONTEND order processing flow. */
@@ -135,7 +132,7 @@ class PaymentAdapter
          * MOBILEPAY flow
          */
         if ($this->order) {
-            $this->paymentMethodCode = $order->getPayment()->getMethod();
+            return $this->paymentMethodCode = $this->order->getPayment()->getMethod();
         }
 
         /**

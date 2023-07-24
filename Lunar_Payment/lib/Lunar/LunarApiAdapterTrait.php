@@ -1,11 +1,11 @@
 <?php
 namespace Lunar\Payment\lib\Lunar;
 /**
- * Class LunarApiAdapterTrait
+ * trait LunarApiAdapterTrait
  * @package Lunar
  */
-if (!class_exists('Lunar\\LunarApiAdapterTrait')) {
-    class LunarApiAdapterTrait
+if (!trait_exists('Lunar\\LunarApiAdapterTrait')) {
+    trait LunarApiAdapterTrait
     {
         private $apiKey;
 
