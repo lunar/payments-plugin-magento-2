@@ -6,15 +6,15 @@ define(
         'Magento_Checkout/js/model/customer-email-validator',
         'Magento_Checkout/js/action/redirect-on-success',
         'mage/url'
-    ],
+   ],
     function (
                 Jquery,
                 PaymentDefaultComponent,
                 Quote,
                 CustomerEmailValidator,
                 RedirectOnSuccessAction,
-                MageUrl
-            ) {
+                MageUrl,
+           ) {
 
         'use strict';
 
@@ -22,28 +22,42 @@ define(
             defaults: {
                 template: 'Lunar_Payment/payment/lunarpaymenthosted',
                 transactionid: '',
-                lunarHostedConfig: window.checkoutConfig.lunarpaymenthosted,
-                logger: window.LunarLoggerHosted
+                publicApiKey: '',
+                checkoutConfig: window.checkoutConfig.lunarpaymenthosted,
+                checkoutMode: window.checkoutConfig.lunarpaymenthosted.checkoutMode,
+                beforeOrder: true,
+				paymentButtonSelector: '.action.primary.checkout',
+                redirectUrl: window.checkoutConfig.defaultSuccessPageUrl,
+                controllerURL: "lunar/index/HostedCheckout",
+                logger: window.LunarLoggerHosted,
             },
 
-            showPopup: function () {
+            /** @inheritdoc */
+            initialize: function () {
+                this._super();
+
+                this.publicApiKey = this.checkoutConfig.publicapikey;
+
+                if ('after_order' == this.checkoutMode) {
+                    this.beforeOrder = false;
+                }
+
+                return this;
+            },
+
+            redirectToPayment: function () {
                 if (!CustomerEmailValidator.validate()) {
                     return false;
                 }
 
                 var self = this;
 
-                /** Initialize object. */
-                var sdkClient = Paylike({key: this.lunarHostedConfig.publicapikey});
-
-                var paymentConfig = this.lunarHostedConfig.config;
+                var paymentConfig = this.checkoutConfig.config;
                 var grandTotal = parseFloat(Quote.totals()['grand_total']);
                 var taxAmount = parseFloat(Quote.totals()['tax_amount']);
                 var totalAmount = grandTotal + taxAmount;
-                paymentConfig.amount.value = Math.round(totalAmount * this.lunarHostedConfig.multiplier);
-
-                /** Change test key value from string 'test' with a boolean value. */
-                paymentConfig.test = ('test' === paymentConfig.test) ? (true) : (false);
+                paymentConfig.amount.value = Math.round(totalAmount * this.checkoutConfig.multiplier);
+                paymentConfig.test = 'test' === paymentConfig.test;
 
                 if (Quote.guestEmail) {
                     paymentConfig.custom.customer.name = Quote.billingAddress()['firstname'] + " " + Quote.billingAddress()['lastname'];
@@ -51,97 +65,164 @@ define(
                 }
 
                 paymentConfig.custom.customer.phoneNo = Quote.billingAddress().telephone;
-                paymentConfig.custom.customer.address = Quote.billingAddress().street[0] + ", " + Quote.billingAddress().city + ", " + Quote.billingAddress().region + " " + Quote.billingAddress().postcode + ", " + Quote.billingAddress().countryId;
+                paymentConfig.custom.customer.address = Quote.billingAddress().street[0] + ", " 
+                                                        + Quote.billingAddress().city + ", " 
+                                                        + Quote.billingAddress().region + " " 
+                                                        + Quote.billingAddress().postcode + ", " 
+                                                        + Quote.billingAddress().countryId;
 
-                self.logger.setContext(paymentConfig, Jquery, MageUrl);
+                let isMobilePay = true;
+                self.logger.setContext(paymentConfig, Jquery, MageUrl, isMobilePay);
 
-                self.logger.log("Opening payment popup");
 
-                sdkClient.pay(paymentConfig, function (err, res) {
-                    if (err) {
-                        if(err === "closed") {
-                            self.logger.log("Popup closed by user");
-                        }
-                        /**
-                         * (Need improvement/rethink the logic)
-                         * In "test" mode if user closes the popup, we need to refresh the page.
-                         * Otherwise, the popup will initialize in live mode.
-                         */
-                         if ('test' === paymentConfig.test) {
-                            return location.reload();
-                        }
+                /** AFTER order flow. */
+                if (!self.beforeOrder){
+                    self.redirectAfterPlaceOrder = false;
 
-                        return console.warn(err);
+                    /**
+                     * Workaround to save order transaction when authorize
+                     * Will be replaced from controller when get called on redirect
+                     */
+                    self.transactionid = 'trxid_placeholder';
+
+
+                    /** Change default behavior after order. */
+                    self.afterPlaceOrder = async function () {
+                        await Jquery.ajax({
+                            type: "POST",
+                            dataType: "json",
+                            url: "/" + self.controllerURL,
+                            data: {
+                                payment_intent: true,
+                            },
+                            success: function(data) {
+                                /** Replace default success url with call to our controller */
+                                // window.location.replace(MageUrl.build(self.controllerURL + '?order_id=' + data.order_id));
+                                window.location.replace(data.payment_intent_url);
+                            },
+                            error: function(jqXHR, textStatus, errorThrown) {
+                                self.submitError('<div class="lunarmobilepay-error">' + errorThrown + '</div>');
+                            }
+                        });
                     }
 
-                    if (res.transaction.id !== undefined && res.transaction.id !== "") {
-                        self.transactionid = res.transaction.id;
-                        self.logger.log("Payment successfull. Transaction ID: " + res.transaction.id);
-                        /*
-                          In order to intercept the error of placeOrder request we need to monkey-patch
-                          the `addErrorMessage` function of the messageContainer:
-                           - first we duplicate the function on the same `messageContainer`, keeping the same `this`
-                           - next we override the function with a new one, were we log the error, and then we call the old function
-                        */
-                        self.messageContainer.oldAddErrorMessage = self.messageContainer.addErrorMessage;
-                        self.messageContainer.addErrorMessage = async function (messageObj) {
-                          await self.logger.log("Place order failed. Reason: " + messageObj.message);
 
-                          self.messageContainer.oldAddErrorMessage(messageObj);
+                    self.logger.log("Payment mode: " + self.checkoutMode);
+
+                    self.placeOrder();
+
+                }
+                /** BEFORE order flow. */
+                else {
+                    self.logger.log("Payment mode: " + self.checkoutMode);
+                    
+                    this.initiatePaymentServerCall(paymentConfig, function(response) {
+
+                        if(response.error){
+                            self.logger.log("Error occured: " + response.error);
+
+                            self.submitError(response.error);
+                            return false;
                         }
 
-                        /*
-                          In order to log the placeOrder success, we need deactivate
-                          the redirect after order placed and call it manually, after
-                          we send the logs to the server
-                        */
-                        self.redirectAfterPlaceOrder = false;
-                        self.afterPlaceOrder = async function (args) {
-                          await self.logger.log("Order placed successfully");
-                          RedirectOnSuccessAction.execute();
+                        if (response.data.authorizationId !== undefined && response.data.authorizationId !== "") {
+                            self.transactionid = response.data.authorizationId;
+                            self.logger.log("Payment successfull. Authorization ID: " + response.data.authorizationId);
+                            /*
+                                * In order to intercept the error of placeOrder request we need to monkey-patch
+                                * the `addErrorMessage` function of the messageContainer:
+                                * - first we duplicate the function on the same `messageContainer`, keeping the same `this`
+                                * - next we override the function with a new one, were we log the error, and then we call the old function
+                                */
+                            self.messageContainer.oldAddErrorMessage = self.messageContainer.addErrorMessage;
+                            self.messageContainer.addErrorMessage = async function (messageObj) {
+                                await self.logger.log("Place order failed. Reason: " + messageObj.message);
+
+                                self.messageContainer.oldAddErrorMessage(messageObj);
+                            }
+
+                            /*
+                                * In order to log the placeOrder success, we need deactivate
+                                * the redirect after order placed and call it manually, after
+                                * we send the logs to the server
+                                */
+                            self.redirectAfterPlaceOrder = false;
+                            self.afterPlaceOrder = async function () {
+                                await self.logger.log("Order placed successfully");
+                                RedirectOnSuccessAction.execute();
+                            }
+
+                            /* Everything is now setup, we can try placing the order */
+                            self.placeOrder();
                         }
 
-                        /* Everything is now setup, we can try placing the order */
-                        self.placeOrder();
-                    }
+                        // // self.disablePaymentButton();
 
-                    else {
-                        self.logger.log("No transaction id returned from gateway, order not placed");
+                        // if (response.data.type === 'redirect') {
+                        //     window.location.href = response.data.url;
+                        //     return false;
+                        // }
+                    });
+                }
+            },
 
-                        return false;
+            initiatePaymentServerCall: function(args, successCallback) {
+                var self = this;
+
+                args.hints = self.hints;
+
+                Jquery.ajax({
+                    type: "POST",
+                    dataType: "json",
+                    url: "/" + self.controllerURL,
+                    data: {
+                        args: args,
+                    },
+                    success: function(data) {
+                        successCallback(data)
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        self.logger.log("Error occurred on server call: " + errorThrown);
+
+                        self.submitError('<div class="lunarmobilepay-error">' + errorThrown + '</div>');
+                    },
+                    always: function() {
+                        //
                     }
                 });
             },
 
+            submitError: function(errorMessage) {
+				Jquery('#lunarmobilepayhosted_messages').prepend(errorMessage).show()
+            },
+
+            disablePaymentButton: function() {
+                Jquery(this.paymentButtonSelector).prop('disabled', true);
+            },
+
+            enablePaymentButton: function() {
+                Jquery(this.paymentButtonSelector).prop('disabled', false);
+            },
+
+            
             /** Returns send check to info */
             getMailingAddress: function () {
                 return window.checkoutConfig.payment.checkmo.mailingAddress;
             },
 
             getDescription: function () {
-                return this.lunarHostedConfig.description;
+                return this.checkoutConfig.description;
             },
 
-            getCardLogos: function () {
-                var logosString = this.lunarHostedConfig.cards;
-
-                if (!logosString) {
-                    return '';
-                }
-
-                var logos = logosString.split(',');
-                var imghtml = "";
-                if (logos.length > 0) {
-                    for (var i = 0; i < logos.length; i++) {
-                        imghtml = imghtml + "<img src='" + this.lunarHostedConfig.url[i] + "' alt='" + logos[i] + "' width='45'>";
-                    }
-                }
-
-                return imghtml;
-            },
-            
             getTitle: function () {
-                return this.lunarHostedConfig.methodTitle;
+                return this.checkoutConfig.methodTitle;
+            },
+
+            getLogo: function () {
+                var logoUrl = this.checkoutConfig.url[0];
+                if (!logoUrl) return '';
+
+                return "  <img src='" + logoUrl + "' alt='mobilepay logo' style='height:5rem'>";
             },
 
             getData: function () {
@@ -153,6 +234,23 @@ define(
                 };
             },
 
+            getCardLogos: function () {
+                var logosString = this.checkoutConfig.cards;
+
+                if (!logosString) {
+                    return '';
+                }
+
+                var logos = logosString.split(',');
+                var imghtml = "";
+                if (logos.length > 0) {
+                    for (var i = 0; i < logos.length; i++) {
+                        imghtml = imghtml + "<img src='" + this.checkoutConfig.url[i] + "' alt='" + logos[i] + "' width='45'>";
+                    }
+                }
+
+                return imghtml;
+            },
         });
     }
 );

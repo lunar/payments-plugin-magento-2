@@ -39,7 +39,7 @@
 						id="lunarmobilepayhosted-button"
 						type="submit"
 						data-bind="
-                        click: makePayment,
+                        click: redirectToPayment,
                         attr: {title: $t('Place Order')},
                         css: {disabled: !isPlaceOrderActionAllowed()},
                         enable: (getCode() == isChecked())

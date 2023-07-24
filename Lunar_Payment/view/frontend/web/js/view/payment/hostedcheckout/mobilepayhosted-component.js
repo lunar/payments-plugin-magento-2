@@ -24,10 +24,7 @@ define(
                 transactionid: '',
                 publicApiKey: '',
                 mobilePayConfig: window.checkoutConfig.lunarmobilepayhosted,
-                lastIframeId: 0,
-                iframeChallenges: [],
-                hints: [],
-                isSubmitPermitted: false,
+                checkoutMode: window.checkoutConfig.lunarmobilepayhosted.checkoutMode,
                 beforeOrder: true,
 				paymentButtonSelector: '.action.primary.checkout',
                 redirectUrl: window.checkoutConfig.defaultSuccessPageUrl,
@@ -39,16 +36,14 @@ define(
             initialize: function () {
                 this._super();
 
-                this.publicApiKey = this.mobilePayConfig.publicapikey;
-
-                if ('after_order' == this.mobilePayConfig.checkoutMode) {
+                if ('after_order' === this.checkoutMode) {
                     this.beforeOrder = false;
                 }
 
                 return this;
             },
 
-            makePayment: function () {
+            redirectToPayment: function () {
                 if (!CustomerEmailValidator.validate()) {
                     return false;
                 }
@@ -60,10 +55,7 @@ define(
                 var taxAmount = parseFloat(Quote.totals()['tax_amount']);
                 var totalAmount = grandTotal + taxAmount;
                 paymentConfig.amount.value = Math.round(totalAmount * this.mobilePayConfig.multiplier);
-
-                /** Change test key value from string 'test' with a boolean value. */
-                paymentConfig.test = ('test' === paymentConfig.test) ? (true) : (false);
-                paymentConfig.checkoutMode = this.mobilePayConfig.checkoutMode;
+                paymentConfig.test = 'test' === paymentConfig.test;
 
                 if (Quote.guestEmail) {
                     paymentConfig.custom.customer.name = Quote.billingAddress()['firstname'] + " " + Quote.billingAddress()['lastname'];
@@ -113,14 +105,14 @@ define(
                     }
 
 
-                    self.logger.log("Payment mode: " + paymentConfig.checkoutMode);
+                    self.logger.log("Payment mode: " + self.checkoutMode);
 
                     self.placeOrder();
 
                 }
                 /** BEFORE order flow. */
                 else {
-                    self.logger.log("Payment mode: " + paymentConfig.checkoutMode);
+                    self.logger.log("Payment mode: " + self.checkoutMode);
                     
                     this.initiatePaymentServerCall(paymentConfig, function(response) {
 
