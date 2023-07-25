@@ -304,7 +304,7 @@ class ConfigProvider implements ConfigProviderInterface
 				'currency' => $currency,
 				'exponent' => $exponent,
 				'value'    => $amount,
-				'decimal'  => $total,
+				'decimal'  => number_format($total, $exponent),
 			],
 			'locale' => $this->locale->getLocale(),
 			'custom' => [

@@ -6,7 +6,10 @@ namespace Lunar\Payment\Controller\Index;
 /**
  *
  */
-class CheckUnpaidOrders implements ActionInterface
+class CheckUnpaidOrders implements \Magento\Framework\App\ActionInterface
 {
-   
+   public function execute()
+   {
+        //
+   }
 }

@@ -7,9 +7,6 @@ use Psr\Log\LoggerInterface;
 use Magento\Store\Model\ScopeInterface;
 use Magento\Framework\App\Response\Http;
 use Magento\Sales\Model\OrderRepository;
-use Magento\Framework\App\Action\Context;
-use Magento\Framework\App\ActionInterface;
-use Magento\Framework\Webapi\Rest\Request;
 use Magento\Framework\App\RequestInterface;
 use Magento\Store\Model\StoreManagerInterface;
 use Magento\Framework\Controller\Result\JsonFactory;
@@ -19,8 +16,9 @@ use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\Message\ManagerInterface;
 use Magento\Framework\Controller\Result\RedirectFactory;
 use Magento\Sales\Api\OrderStatusHistoryRepositoryInterface;
-use Magento\Sales\Model\Order;
+use Magento\Quote\Api\CartRepositoryInterface;
 
+use Magento\Sales\Model\Order;
 use Magento\Sales\Api\Data\TransactionInterface;
 use Magento\Framework\DB\TransactionFactory;
 use Magento\Sales\Model\ResourceModel\Order\Invoice\CollectionFactory;
@@ -29,9 +27,6 @@ use Magento\Sales\Model\Order\Email\Sender\InvoiceSender;
 use Magento\Sales\Model\Order\Invoice;
 use Magento\Framework\Pricing\PriceCurrencyInterface;
 
-use GuzzleHttp\Client as GuzzleClient;
-use GuzzleHttp\Exception\GuzzleException;
-
 use Lunar\Payment\Model\Ui\ConfigProvider;
 use Lunar\Payment\Model\Adminhtml\Source\CaptureMode;
 use Lunar\Lunar;
@@ -39,43 +34,42 @@ use Lunar\Lunar;
 /**
  * Controller responsible to manage Hosted Checkout payments
  */
-class HostedCheckout implements ActionInterface
-{    
+class HostedCheckout implements \Magento\Framework\App\ActionInterface
+{
     private $configProvider;
     private $storeManager;
     private $logger;
     private $scopeConfig;
     private $orderRepository;
     private $jsonFactory;
-    private $requestInterface;
     private $redirect;
     private $redirectFactory;
     private $response;
     private $messageManager;
     private $orderStatusRepository;
+    private $cartRepositoryInterface;
     private $invoiceCollectionFactory;
     private $invoiceService;
     private $transactionFactory;
     private $invoiceSender;
     private $priceCurrencyInterface;
 
-    const REMOTE_URL = 'https://pay.lunar.money';
+    const REMOTE_URL = 'https://pay.lunar.money/?id=';
+    const TEST_REMOTE_URL = 'https://hosted-checkout-git-develop-lunar-app.vercel.app/?id=';
 
     private Lunar $lunarApiClient;
     private $intentIdKey = '_lunar_intent_id';
 
     private string $baseURL = '';
     private bool $isInstantMode = false;
-    private ?int $orderId = null;
+    private $quote = null;
     private bool $beforeOrder = true;
     private Order $order;
     private array $args = [];
-    private string $referer = '';
-    private string $referrerURL = '';
     private string $paymentIntentId = '';
     private string $controllerURL = 'lunar/index/HostedCheckout';
-    private string $authorizationId = '';
     private string $paymentMethodCode = '';
+    private string $publicKey = '';
 
 
     public function __construct(
@@ -91,6 +85,7 @@ class HostedCheckout implements ActionInterface
         Http $response,
         ManagerInterface $messageManager,
         OrderStatusHistoryRepositoryInterface $orderStatusRepository,
+        CartRepositoryInterface $cartRepositoryInterface,
 
         CollectionFactory $invoiceCollectionFactory,
         InvoiceService $invoiceService,
@@ -104,7 +99,7 @@ class HostedCheckout implements ActionInterface
         $this->scopeConfig            = $scopeConfig;
         $this->orderRepository        = $orderRepository;
         $this->jsonFactory            = $jsonFactory;
-        $this->requestInterface       = $requestInterface;
+        
         $this->redirect               = $redirect;
         $this->redirectFactory        = $redirectFactory;
         $this->response               = $response;
@@ -122,15 +117,13 @@ class HostedCheckout implements ActionInterface
         $this->baseURL = $this->storeManager->getStore()->getBaseUrl();
 
         /**
-         * If request has order_id, the request is from a redirect (after_order)
+         * If request has order_id, the request is from a redirect
          */
-        if ($requestInterface->getParam('order_id')) {
-
-            $this->orderId = $requestInterface->getParam('order_id');
+        if ($orderId = $requestInterface->getParam('order_id')) {
 
             $this->beforeOrder = false;
 
-            $this->order = $this->orderRepository->get($this->orderId);
+            $this->order = $this->orderRepository->get($orderId);
             $this->configProvider->setOrder($this->order);
             $this->paymentMethodCode = $this->order->getPayment()->getMethod();
 
@@ -142,17 +135,19 @@ class HostedCheckout implements ActionInterface
             /** Set order Id instead of quote id, when after_order flow */
             unset($this->args['custom']['quoteId']);
             $this->args['custom'] = array_merge(['orderId' => $this->order->getIncrementId()], $this->args['custom']);
-
-            $this->referer = $this->baseURL . $this->controllerURL . '?order_id=' . $this->orderId;
-        }
-        else {
+        } else {
             $this->args = $requestInterface->getParam('args');
             $this->paymentMethodCode = $this->args['custom']['paymentMethod'];
         }
 
-        $privateKey = 'test' == $this->getStoreConfigValue('transaction_mode')
-                        ? $this->getStoreConfigValue('test_app_key')
-                        : $this->getStoreConfigValue('live_app_key');
+
+        if ('test' == $this->getStoreConfigValue('transaction_mode')) {
+            $this->publicKey =  $this->getStoreConfigValue('test_public_key');
+            $privateKey =  $this->getStoreConfigValue('test_app_key');
+        } else {
+            $this->publicKey = $this->getStoreConfigValue('live_public_key');
+            $privateKey = $this->getStoreConfigValue('live_app_key');
+        }
 
         /** API Client instance */
         $this->lunarApiClient = new Lunar($privateKey);
@@ -164,21 +159,28 @@ class HostedCheckout implements ActionInterface
      */
     public function execute()
     {
-        // $this->getHintsFromOrder();
-        
         $this->setArgs();
-        
-        if ( ! $this->checkPaymentIntentOnOrder()) {
+
+        if (!$this->checkPaymentIntentOnOrder()) {
             $this->paymentIntentId = $this->lunarApiClient->payments()->create($this->args);
         }
 
-		$redirectUrl = self::REMOTE_URL . $this->paymentIntentId;
+        if (! $this->paymentIntentId) {
+            $errorMessage = 'An error occured creating payment for order. Please try again or contact system administrator.'; // <a href="/">Go to homepage</a>'
+            return $this->redirectToErrorPage($errorMessage);
+        }
 
-        // if ( ! $this->isInstantMode) {
-        //     $this->savePaymentIntentOnOrder();
-        // }
+        $redirectUrl = self::REMOTE_URL . $this->paymentIntentId;
+        if(isset($this->args['test'])) {
+			$redirectUrl = self::TEST_REMOTE_URL . $this->paymentIntentId;
+		}
+        // return $this->response->setRedirect($redirectUrl);
+        $this->sendJsonResponse([
+            'data' => [
+                'paymentRedirectURL' => $redirectUrl
+            ],
+        ]);
 
-        return $this->response->setRedirect($redirectUrl);
 
 
         // $this->authorizationId = $response['data']['authorizationId'] ?? '';
@@ -249,22 +251,17 @@ class HostedCheckout implements ActionInterface
      */
     private function setArgs()
     {
-        
-        $publicKey = $this->getStoreConfigValue('live_public_key');
         if ('test' == $this->getStoreConfigValue('transaction_mode')) {
-            $publicKey = $this->getStoreConfigValue('test_public_key');
-            // $title = $this->args['title'];
-            // $this->args = $this->get_test_args();
             $this->args['test'] = new \stdClass();
-        }  else {
+            // unset($this->args['test']);
+        } else {
             // Unset 'test' param for live mode
             unset($this->args['test']);
         }
 
         $this->args['integration'] = [
-            'key' => $publicKey,
-            'name' => $this->args['title'],
-            // 'name' => $this->args['title'] ?? $title,
+            'key' => $this->publicKey,
+            'name' => $this->storeManager->getStore()->getName(),
             'logo' =>  $this->getStoreConfigValue('logo_url'),
         ];
 
@@ -280,7 +277,7 @@ class HostedCheckout implements ActionInterface
 
         // $this->args['redirectUrl'] = $this->storeManager->getStore()->getBaseUrl() . 'checkout/onepage/success';
 
-        $params = $this->beforeOrder ? '?quoteId=' : '?orderId=';
+        $params = $this->beforeOrder ? '?quote_id=' : '?order_id=';
         $this->args['redirectUrl'] = $this->baseURL . $this->controllerURL . $params . $this->args['custom']['quoteId'];
         $this->args['preferredPaymentMethod'] = $this->paymentMethodCode == ConfigProvider::MOBILEPAY_HOSTED_CODE ? 'mobilePay' : 'card';
 
@@ -314,12 +311,13 @@ class HostedCheckout implements ActionInterface
         return ['data' => $data];
     }
 
-    
+
     /**
      * SET TXN ID ON ORDER PAYMENT
      */
     private function setTxnIdOnOrderPayment()
     {
+        /** @var \Magento\Sales\Model\Order\Payment $orderPayment */
         $orderPayment = $this->order->getPayment();
 
         $baseGrandTotal = $this->order->getBaseGrandTotal();
@@ -327,12 +325,12 @@ class HostedCheckout implements ActionInterface
 
         $orderPayment->setBaseAmountAuthorized($baseGrandTotal);
         $orderPayment->setAmountAuthorized($grandTotal);
-        $orderPayment->setAdditionalInformation('transactionid', $this->authorizationId);
-        $orderPayment->setLastTransId($this->authorizationId);
+        $orderPayment->setAdditionalInformation('transactionid', $this->paymentIntentId);
+        $orderPayment->setLastTransId($this->paymentIntentId);
         $orderPayment->save();
 
         /** Manually insert transaction if after_order & delayed mode. */
-        if (! $this->beforeOrder && ! $this->isInstantMode) {
+        if (!$this->beforeOrder && !$this->isInstantMode) {
             $this->insertNewTransactionForPayment($orderPayment);
         }
     }
@@ -347,11 +345,11 @@ class HostedCheckout implements ActionInterface
          * @see vendor\magento\module-sales\Model\Order\Payment.php L1134
          * in that case we can remove some of the methods here and use only one (?)
          */
-        $orderPayment->setTransactionId($this->authorizationId);
+        $orderPayment->setTransactionId($this->paymentIntentId);
         $orderPayment->setIsTransactionClosed(0);
         $orderPayment->setShouldCloseParentTransaction(0);
         //  $paymentTransaction = $orderPayment->_addTransaction('authorization', null, true); // true - failsafe
-         $paymentTransaction = $orderPayment->addTransaction(TransactionInterface::TYPE_AUTH);
+        $paymentTransaction = $orderPayment->addTransaction(TransactionInterface::TYPE_AUTH);
     }
 
     /**
@@ -364,11 +362,11 @@ class HostedCheckout implements ActionInterface
         /** Get only last created history */
         $orderHistory = $statusHistories[0] ?? null;
 
-        if ( ! $orderHistory) {
+        if (!$orderHistory) {
             return;
         }
 
-        $commentContentModified = str_replace('trxid_placeholder', $this->authorizationId, $orderHistory['comment'] ?? '');
+        $commentContentModified = str_replace('trxid_placeholder', $this->paymentIntentId, $orderHistory['comment'] ?? '');
 
         $historyItem = $this->orderStatusRepository->get($orderHistory['entity_id']);
 
@@ -378,16 +376,15 @@ class HostedCheckout implements ActionInterface
         }
 
         /** Delete last order status history if conditions met. */
-        if ( ! $this->beforeOrder) {
+        if (!$this->beforeOrder) {
             if ($this->isInstantMode) {
                 $historyItem->delete();
                 return;
             } else {
+                /** The price will be displayed in base currency. */
                 $baseGrandTotal = $this->order->getBaseGrandTotal();
                 $formattedPrice = $this->priceCurrencyInterface->format($baseGrandTotal, $includeContainer = false, $precision = 2, $scope = null, $currency = 'USD');
-
-                /** The price will be displayed in base currency. */
-                $commentContentModified = 'Authorized amount of ' . $formattedPrice . '. Transaction ID: "' . $this->authorizationId . '".';
+                $commentContentModified = 'Authorized amount of ' . $formattedPrice . '. Transaction ID: "' . $this->paymentIntentId . '".';
                 $historyItem->setIsCustomerNotified(0); // @TODO check this (is notified? should we notify?)
             }
         }
@@ -395,7 +392,6 @@ class HostedCheckout implements ActionInterface
         $historyItem->setStatus(Order::STATE_PENDING_PAYMENT);
         $historyItem->setComment($commentContentModified);
         $historyItem->save();
-
     }
 
     /**
@@ -407,6 +403,7 @@ class HostedCheckout implements ActionInterface
             return false;
         }
 
+        /** @var \Magento\Sales\Model\Order\Payment $payment */
         $payment = $this->order->getPayment();
         $additionalInformation = $payment->getAdditionalInformation();
 
@@ -425,7 +422,7 @@ class HostedCheckout implements ActionInterface
             return;
         }
 
-        // preserve already existing additional data
+        /** @var \Magento\Sales\Model\Order\Payment $payment */
         $payment = $this->order->getPayment();
         $additionalInformation = $payment->getAdditionalInformation();
         // preserve already existing additional data
@@ -499,7 +496,7 @@ class HostedCheckout implements ActionInterface
      */
     private function sendJsonResponse($response, $code = 200)
     {
-        return $this->jsonFactory->create()->setData($response);
+        return $this->jsonFactory->create()->setHttpResponseCode($code)->setData($response);
     }
 
     /**
@@ -513,34 +510,74 @@ class HostedCheckout implements ActionInterface
         $dataRedirectUrl = 'lunar/index/displayerror';
         $resultRedirect = $this->redirectFactory->create();
         return $resultRedirect->setPath($dataRedirectUrl);
-	}
-
+    }
 
     /**
-     * 
+     * Parses api transaction response for errors
      */
-    private function get_test_args(): array 
+    protected function parseApiTransactionResponse($transaction)
     {
-		return [
-			"card"        => [
-				"scheme"  => "supported",
-				"code"    => "valid",
-				"status"  => "valid",
-				"limit"   => [
-					"decimal"  => "399.95",
-					"currency" => "USD"
-				],
-				"balance" => [
-					"decimal"  => "399.95",
-					"currency" => "USD"
-				]
-			],
-			"fingerprint" => "success",
-			"tds"         => array(
-				"fingerprint" => "success",
-				"challenge"   => true,
-				"status"      => "authenticated"
-			),
-		];
-	}
+        if (! $this->isTransactionSuccessful($transaction)) {
+            $this->logger->debug("Transaction with error: " . json_encode($transaction, JSON_PRETTY_PRINT));
+
+            if ($this->beforeOrder) {
+                return $this->error($this->getResponseError($transaction));
+            } else {
+                return $this->redirectToErrorPage($this->getResponseError($transaction));
+            }
+        }
+
+        return $transaction;
+    }
+
+    /**
+	 * Checks if the transaction was successful and
+	 * the data was not tempered with.
+     * 
+     * @return bool
+     */
+    private function isTransactionSuccessful($transaction)
+    {
+        // if we don't have the order, we only check the successful status.
+        if (!$this->order) {
+            return true == $transaction['authorisationCreated'];
+        }
+        // // we need to overwrite the amount in the case of a subscription.
+        // if (!$amount) {
+        //     $amount = $this->order->getBaseGrandTotal();
+        // }
+
+        $matchCurrency = $this->order->getOrderCurrencyCode() == $transaction['amount']['currency'];
+        $matchAmount = $this->args['amount'] == $transaction['amount']['decimal'];
+
+        return (true == $transaction['authorisationCreated'] && $matchCurrency && $matchAmount);
+    }
+
+    /**
+     * Gets errors from a failed api request
+     * @param array $result The result returned by the api wrapper.
+     * @return string
+     */
+    private function getResponseError($result)
+    {
+        $error = [];
+        // if this is just one error
+        if (isset($result['text'])) {
+            return $result['text'];
+        }
+
+        if (isset($result['code']) && isset($result['error'])) {
+            return $result['code'] . '-' . $result['error'];
+        }
+
+        // otherwise this is a multi field error
+        if ($result) {
+            foreach ($result as $fieldError) {
+                $error[] = $fieldError['field'] . ':' . $fieldError['message'];
+            }
+        }
+
+        return implode(' ', $error);
+    }
+
 }
