@@ -99,7 +99,6 @@ define(
                                 quote_id: paymentConfig.custom.quoteId,
                             },
                             success: function(data) {
-                                /** Replace default success url with call to our controller */
                                 window.location.replace(MageUrl.build('lunar/index/MobilePayPayment/?order_id=' + data.order_id));
                             },
                             error: function(jqXHR, textStatus, errorThrown) {

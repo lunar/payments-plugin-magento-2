@@ -98,8 +98,8 @@ class ConfigProvider implements ConfigProviderInterface
 												];
 
 				$configData[$methodCode] = [
-					'checkoutMode' => $this->getCheckoutMode(),
-					'description'  => $this->getDescription(),
+					'checkoutMode' => $this->getStoreConfigValue('checkout_mode'),
+					'description'  => $this->getStoreConfigValue('description'),
 					'config'       => $this->getConfigJSON(),
 					'publicapikey' => $this->getPublicKey(),
 					'cards'        => $this->getAcceptedCards(),
@@ -115,30 +115,6 @@ class ConfigProvider implements ConfigProviderInterface
 	}
 
 	/**
-	 * Retrieve Checkout Mode from DB
-	 *
-	 * @return string
-	 */
-	private function getCheckoutMode() {
-		$checkoutMode = $this->getStoreConfigValue('checkout_mode');
-		if (!$checkoutMode) {
-			$checkoutMode = 'before_order';
-		}
-
-		return $checkoutMode;
-	}
-
-	/**
-	 * Retrieve description from backend
-	 *
-	 * @return string
-	 */
-
-	private function getDescription() {
-		return $this->getStoreConfigValue('description');
-	}
-
-	/**
 	 * Retrieve URLs of selected credit cards from backend
 	 *
 	 * @return array
@@ -147,15 +123,15 @@ class ConfigProvider implements ConfigProviderInterface
 	private function getImageUrl() {
 
 		if (in_array($this->paymentMethodCode, [self::MOBILEPAY_CODE, self::MOBILEPAY_HOSTED_CODE])) {
-			return [$this->_assetRepo->getUrl( 'Lunar_Payment::images/paymenticons/mobilepay-logo.png' )];
+			return [$this->_assetRepo->getUrl('Lunar_Payment::images/paymenticons/mobilepay-logo.png' )];
 		}
 
 		$acceptedCards = $this->getAcceptedCards();
-		$selectedCards = explode( ",", $acceptedCards );
+		$selectedCards = explode(",", $acceptedCards );
 
 		$finalCards = array();
 		foreach ($selectedCards as $value) {
-			$finalCards[] = $this->_assetRepo->getUrl( 'Lunar_Payment::images/paymenticons/' . $value . '.svg' );
+			$finalCards[] = $this->_assetRepo->getUrl('Lunar_Payment::images/paymenticons/' . $value . '.svg' );
 		}
 
 		return $finalCards;
@@ -166,7 +142,7 @@ class ConfigProvider implements ConfigProviderInterface
 	 */
 	private function _getQuote() {
 		if ($this->order) {
-			return $this->cartRepositoryInterface->get( $this->order->getQuoteId() );
+			return $this->cartRepositoryInterface->get($this->order->getQuoteId());
 		}
 
 		return $this->_cart->getQuote();
@@ -179,19 +155,19 @@ class ConfigProvider implements ConfigProviderInterface
 	 */
 
 	private function getPopupTitle() {
-		$title = $this->getStoreConfigValue('popup_title');
-		if ( ! $title ) {
+		return $this->getStoreConfigValue('popup_title') ?: $this->getStoreName();
+	}
 
-			$title =$this->_storeManager->getStore()->getName();
-		}
-
-		return $title;
+	/**
+	 * 
+	 */
+	private function getStoreName()
+	{
+		return $this->_storeManager->getStore()->getName();
 	}
 
 	private function getLogsEnabled() {
-		$enabled = $this->getStoreConfigValue('enable_logs');
-
-		return $enabled === "1";
+		return "1" === $this->getStoreConfigValue('enable_logs');
 	}
 
 	/**
@@ -211,13 +187,9 @@ class ConfigProvider implements ConfigProviderInterface
 	 */
 
 	private function getPublicKey() {
-		$key = $this->getStoreConfigValue('live_public_key');
-
-		if ('test' == $this->transactionMode) {
-			$key = $this->getStoreConfigValue('test_public_key');
-		}
-
-		return $key;
+		return 'test' === $this->transactionMode
+				? $this->getStoreConfigValue('test_public_key')
+				: $this->getStoreConfigValue('live_public_key');
 	}
 
 	/**
@@ -239,18 +211,18 @@ class ConfigProvider implements ConfigProviderInterface
 	 * @return float|int
 	 */
 
-	private function getMultiplier( $currency ) {
-		return $this->helper->getCurrencyMultiplier( $currency );
+	private function getMultiplier($currency) {
+		return $this->helper->getCurrencyMultiplier($currency);
 
 	}
 
-	private function getAmount( $currency,$amount ) {
-		return $this->helper->getAmount( $currency,$amount );
+	private function getAmount($currency,$amount) {
+		return $this->helper->getAmount($currency, $amount);
 
 	}
 
-	private function getExponent( $currency ) {
-		return $this->helper->getCurrency( $currency )['exponent'];
+	private function getExponent($currency) {
+		return $this->helper->getCurrency($currency)['exponent'];
 
 	}
 
@@ -271,7 +243,7 @@ class ConfigProvider implements ConfigProviderInterface
 
 
 		$products = array();
-		foreach ( $quote->getAllVisibleItems() as $item ) {
+		foreach ($quote->getAllVisibleItems() as $item) {
 			$product    = array(
 				'ID'       => $item->getProductId(),
 				'SKU'      => $item->getSku(),
@@ -287,9 +259,9 @@ class ConfigProvider implements ConfigProviderInterface
 			$products[] = $product;
 		}
 
-		if ( ! $this->order) {
+		if (! $this->order) {
 			$quoteId = $quote->getId();
-			$quote   = $this->cartRepositoryInterface->get( $quote->getId() );
+			$quote   = $this->cartRepositoryInterface->get($quote->getId());
 		}
 
 		$customerData = $quote->getCustomer();
@@ -297,10 +269,10 @@ class ConfigProvider implements ConfigProviderInterface
 		$name         = $quote->getCustomer()->getFirstName() . " " . $quote->getCustomer()->getLastName();
 		$address      = $quote->getBillingAddress();
 
-        if ( ! $email ) { $email = $quote->getCustomerEmail(); }
-        if ( ! $name ) { $name = $quote->getCustomerName(); }
+        if (! $email) { $email = $quote->getCustomerEmail(); }
+        if (! $name) { $name = $quote->getCustomerName(); }
 
-        if ( ! $address) {
+        if (! $address) {
             $address = $quote->getShippingAddress();
         }
 
@@ -311,7 +283,7 @@ class ConfigProvider implements ConfigProviderInterface
 							. $address->getCountryId();
 
 		$objectManager = ObjectManager::getInstance();
-		$ip            = $objectManager->get( 'Magento\Framework\HTTP\PhpEnvironment\RemoteAddress' );
+		$ip            = $objectManager->get('Magento\Framework\HTTP\PhpEnvironment\RemoteAddress');
 
 		$customer = array(
 			'name'    => $name,
@@ -322,7 +294,7 @@ class ConfigProvider implements ConfigProviderInterface
 		);
 
 
-		$productMetadata = $objectManager->get( 'Magento\Framework\App\ProductMetadataInterface' );
+		$productMetadata = $objectManager->get('Magento\Framework\App\ProductMetadataInterface');
 		$magentoVersion  = $productMetadata->getVersion();
 
 		return [
@@ -368,6 +340,6 @@ class ConfigProvider implements ConfigProviderInterface
             /*path*/ $configPath,
             /*scopeType*/ ScopeInterface::SCOPE_STORE,
 			/*scopeCode*/ $storeId
-        );
+		);
     }
 }

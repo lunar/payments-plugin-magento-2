@@ -20,27 +20,11 @@ define(
 
         return PaymentDefaultComponent.extend({
             defaults: {
-                template: 'Lunar_Payment/payment/lunarmobilepayhosted',
                 transactionid: '',
-                publicApiKey: '',
-                mobilePayConfig: window.checkoutConfig.lunarmobilepayhosted,
-                checkoutMode: window.checkoutConfig.lunarmobilepayhosted.checkoutMode,
-                beforeOrder: true,
 				paymentButtonSelector: '.action.primary.checkout',
                 redirectUrl: window.checkoutConfig.defaultSuccessPageUrl,
                 controllerURL: "lunar/index/HostedCheckout",
                 logger: window.LunarLoggerHosted,
-            },
-
-            /** @inheritdoc */
-            initialize: function () {
-                this._super();
-
-                if ('after_order' === this.checkoutMode) {
-                    this.beforeOrder = false;
-                }
-
-                return this;
             },
 
             redirectToPayment: function () {
@@ -50,11 +34,11 @@ define(
 
                 var self = this;
 
-                var paymentConfig = this.mobilePayConfig.config;
+                var paymentConfig = this.checkoutConfig.config;
                 var grandTotal = parseFloat(Quote.totals()['grand_total']);
                 var taxAmount = parseFloat(Quote.totals()['tax_amount']);
                 var totalAmount = grandTotal + taxAmount;
-                paymentConfig.amount.value = Math.round(totalAmount * this.mobilePayConfig.multiplier);
+                paymentConfig.amount.value = Math.round(totalAmount * this.checkoutConfig.multiplier);
                 paymentConfig.test = 'test' === paymentConfig.test;
 
                 if (Quote.guestEmail) {
@@ -91,12 +75,11 @@ define(
                             dataType: "json",
                             url: "/" + self.controllerURL,
                             data: {
-                                payment_intent: true,
+                                args: paymentConfig,
                             },
                             success: function(data) {
-                                /** Replace default success url with call to our controller */
                                 // window.location.replace(MageUrl.build(self.controllerURL + '?order_id=' + data.order_id));
-                                window.location.replace(data.payment_intent_url);
+                                window.location.replace(data.paymentRedirectURL);
                             },
                             error: function(jqXHR, textStatus, errorThrown) {
                                 self.submitError('<div class="lunarmobilepay-error">' + errorThrown + '</div>');
@@ -105,14 +88,14 @@ define(
                     }
 
 
-                    self.logger.log("Payment mode: " + self.checkoutMode);
+                    self.logger.log("Payment mode: " + paymentConfig.checkoutMode);
 
                     self.placeOrder();
 
                 }
                 /** BEFORE order flow. */
                 else {
-                    self.logger.log("Payment mode: " + self.checkoutMode);
+                    self.logger.log("Payment mode: " + paymentConfig.checkoutMode);
                     
                     this.initiatePaymentServerCall(paymentConfig, function(response) {
 
@@ -209,15 +192,15 @@ define(
             },
 
             getDescription: function () {
-                return this.mobilePayConfig.description;
+                return this.checkoutConfig.description;
             },
 
             getTitle: function () {
-                return this.mobilePayConfig.methodTitle;
+                return this.checkoutConfig.methodTitle;
             },
 
             getLogo: function () {
-                var logoUrl = this.mobilePayConfig.url[0];
+                var logoUrl = this.checkoutConfig.url[0];
                 if (!logoUrl) return '';
 
                 return "  <img src='" + logoUrl + "' alt='mobilepay logo' style='height:5rem'>";
@@ -230,6 +213,24 @@ define(
                         'transactionid': this.transactionid
                     }
                 };
+            },
+
+            getCardLogos: function () {
+                var logosString = this.checkoutConfig.cards;
+
+                if (!logosString) {
+                    return '';
+                }
+
+                var logos = logosString.split(',');
+                var imghtml = "";
+                if (logos.length > 0) {
+                    for (var i = 0; i < logos.length; i++) {
+                        imghtml = imghtml + "<img src='" + this.checkoutConfig.url[i] + "' alt='" + logos[i] + "' width='45'>";
+                    }
+                }
+
+                return imghtml;
             },
         });
     }

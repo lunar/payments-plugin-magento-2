@@ -11,11 +11,11 @@ define(
         rendererList.push(
             {
                 type: 'lunarpaymenthosted',
-                component: 'Lunar_Payment/js/view/payment/hostedcheckout/lunarhosted-component'
+                component: 'Lunar_Payment/js/view/payment/hostedcheckout/lunarpaymenthosted'
             },
             {
                 type: 'lunarmobilepayhosted',
-                component: 'Lunar_Payment/js/view/payment/hostedcheckout/mobilepayhosted-component'
+                component: 'Lunar_Payment/js/view/payment/hostedcheckout/mobilepayhosted'
             }
         );
         /** Add view logic here if needed */

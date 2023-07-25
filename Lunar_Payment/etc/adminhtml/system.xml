@@ -399,7 +399,7 @@
                 <field id="test_app_key" translate="label comment" type="text" sortOrder="60" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Test mode App Key</label>
                     <comment>Get it from your Lunar dashboard</comment>
-                    <backend_model>Lunar\Payment\Model\Adminhtml\Source\TestAppKey</backend_model>
+                    <!-- <backend_model>Lunar\Payment\Model\Adminhtml\Source\TestAppKey</backend_model> -->
                     <depends>
                         <field id="transaction_mode">test</field>
                     </depends>
@@ -408,7 +408,7 @@
                 <field id="test_public_key" translate="label comment" type="text" sortOrder="70" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Test mode Public Key</label>
                     <comment>Get it from your Lunar dashboard</comment>
-                    <backend_model>Lunar\Payment\Model\Adminhtml\Source\TestPublicKey</backend_model>
+                    <!-- <backend_model>Lunar\Payment\Model\Adminhtml\Source\TestPublicKey</backend_model> -->
                     <depends>
                         <field id="transaction_mode">test</field>
                     </depends>
@@ -417,13 +417,13 @@
                 <field id="live_app_key" translate="label comment" type="text" sortOrder="80" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>App Key</label>
                     <comment>Get it from your Lunar dashboard</comment>
-                    <backend_model>Lunar\Payment\Model\Adminhtml\Source\LiveAppKey</backend_model>
+                    <!-- <backend_model>Lunar\Payment\Model\Adminhtml\Source\LiveAppKey</backend_model> -->
                 </field>
 
                 <field id="live_public_key" translate="label comment" type="text" sortOrder="90" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Public Key</label>
                     <comment>Get it from your Lunar dashboard</comment>
-                    <backend_model>Lunar\Payment\Model\Adminhtml\Source\LivePublicKey</backend_model>
+                    <!-- <backend_model>Lunar\Payment\Model\Adminhtml\Source\LivePublicKey</backend_model> -->
                 </field>
 
                 <field id="configuration_id" translate="label comment" type="text" sortOrder="100" showInDefault="1" showInWebsite="1" showInStore="1">
