@@ -69,6 +69,7 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
     private string $paymentIntentId = '';
     private string $controllerURL = 'lunar/index/HostedCheckout';
     private string $paymentMethodCode = '';
+    private bool $testMode = false;
     private string $publicKey = '';
 
 
@@ -140,8 +141,8 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
             $this->paymentMethodCode = $this->args['custom']['paymentMethod'];
         }
 
-
-        if ('test' == $this->getStoreConfigValue('transaction_mode')) {
+        $this->testMode = 'test' == $this->getStoreConfigValue('transaction_mode');
+        if ($this->testMode) {
             $this->publicKey =  $this->getStoreConfigValue('test_public_key');
             $privateKey =  $this->getStoreConfigValue('test_app_key');
         } else {
@@ -175,7 +176,7 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
 			$redirectUrl = self::TEST_REMOTE_URL . $this->paymentIntentId;
 		}
         // return $this->response->setRedirect($redirectUrl);
-        $this->sendJsonResponse([
+        return $this->sendJsonResponse([
             'data' => [
                 'paymentRedirectURL' => $redirectUrl
             ],
@@ -251,8 +252,9 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
      */
     private function setArgs()
     {
-        if ('test' == $this->getStoreConfigValue('transaction_mode')) {
-            $this->args['test'] = new \stdClass();
+        if ($this->testMode) {
+            $this->args['test'] = $this->getTestObject();
+            // $this->args['test'] = new \stdClass();
             // unset($this->args['test']);
         } else {
             // Unset 'test' param for live mode
@@ -291,8 +293,6 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
             $this->args['checkoutMode'],
             // $this->args['custom']['quoteId']
         );
-
-        // unset($this->args['test']);
     }
 
     /**
@@ -371,7 +371,7 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
         $historyItem = $this->orderStatusRepository->get($orderHistory['entity_id']);
 
 
-        if ( ! $historyItem) {
+        if (!$historyItem) {
             return;
         }
 
@@ -484,11 +484,7 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
         $storeId = $this->storeManager->getStore()->getId();
         $configPath = 'payment/' . $this->paymentMethodCode . '/' . $configKey;
 
-        return $this->scopeConfig->getValue(
-            /*path*/ $configPath,
-            /*scopeType*/ ScopeInterface::SCOPE_STORE,
-            /*scopeCode*/ $storeId
-        );
+        return $this->scopeConfig->getValue($configPath, ScopeInterface::SCOPE_STORE, $storeId);
     }
 
     /**
@@ -580,4 +576,31 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
         return implode(' ', $error);
     }
 
+    /**
+     * @TODO move this into ConfigProvider after complete implementation
+     */
+    private function getTestObject(): array
+    {
+        return [
+            "card"        => [
+                "scheme"  => "supported",
+                "code"    => "valid",
+                "status"  => "valid",
+                "limit"   => [
+                    "decimal"  => "399.95",
+                    "currency" => "USD"
+                ],
+                "balance" => [
+                    "decimal"  => "399.95",
+                    "currency" => "USD"
+                ]
+            ],
+            "fingerprint" => "success",
+            "tds"         => array(
+                "fingerprint" => "success",
+                "challenge"   => true,
+                "status"      => "authenticated"
+            ),
+        ];
+    }
 }
