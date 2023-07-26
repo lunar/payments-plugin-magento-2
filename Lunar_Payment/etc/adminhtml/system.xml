@@ -342,11 +342,11 @@
                     <comment>In Instant mode, orders are invoiced automatically. Set this option to yes if you want to send the invoice email to the customers</comment>
                 </field>
 
-                <field id="checkout_mode" translate="label comment" type="select" sortOrder="130" showInDefault="1" showInWebsite="1" showInStore="1">
+                <!-- <field id="checkout_mode" translate="label comment" type="select" sortOrder="130" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Checkout mode</label>
                     <source_model>Lunar\Payment\Model\Adminhtml\Source\CheckoutMode</source_model>
                     <comment>The possibility to pay before or after creating the order</comment>
-                </field>
+                </field> -->
 
                 <field id="order_status" translate="label" type="select" sortOrder="140" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
                     <label>New Order Status</label>
@@ -452,12 +452,12 @@
                     </depends>
                 </field>
 
-                <field id="checkout_mode" translate="label comment" type="select" sortOrder="130" showInDefault="1" showInWebsite="1" showInStore="1">
+                <!-- <field id="checkout_mode" translate="label comment" type="select" sortOrder="130" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Checkout mode</label>
                     <comment>The possibility to pay before or after creating the order</comment>
                     <source_model>Lunar\Payment\Model\Adminhtml\Source\CheckoutMode</source_model>
                     <backend_model>Lunar\Payment\Model\Adminhtml\MobilepayConfigPaymentAction</backend_model>
-                </field>
+                </field> -->
 
                 <field id="invoice_email" translate="label" type="select" sortOrder="140" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Enable Invoice emails</label>

@@ -23,7 +23,7 @@ class MobilePayCheckoutAllSubmitAfterObserver implements ObserverInterface
 {
     const LUNAR_MOBILEPAY_METHODS = [
         ConfigProvider::MOBILEPAY_CODE,
-        ConfigProvider::MOBILEPAY_HOSTED_CODE,
+        // ConfigProvider::MOBILEPAY_HOSTED_CODE,
     ];
 
     private $methodCode = '';

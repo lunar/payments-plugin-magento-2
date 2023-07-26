@@ -62,9 +62,7 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
 
     private string $baseURL = '';
     private bool $isInstantMode = false;
-    private $quote = null;
-    private bool $beforeOrder = true;
-    private Order $order;
+    private ?Order $order = null;
     private array $args = [];
     private string $paymentIntentId = '';
     private string $controllerURL = 'lunar/index/HostedCheckout';
@@ -121,9 +119,6 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
          * If request has order_id, the request is from a redirect
          */
         if ($orderId = $requestInterface->getParam('order_id')) {
-
-            $this->beforeOrder = false;
-
             $this->order = $this->orderRepository->get($orderId);
             $this->configProvider->setOrder($this->order);
             $this->paymentMethodCode = $this->order->getPayment()->getMethod();
@@ -162,7 +157,13 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
     {
         $this->setArgs();
 
-        if (!$this->checkPaymentIntentOnOrder()) {
+        $checkPaymentIntent = true;
+
+        if ($this->order) {
+            $checkPaymentIntent = $this->checkPaymentIntentOnOrder();
+        }
+
+        if ($checkPaymentIntent) {
             $this->paymentIntentId = $this->lunarApiClient->payments()->create($this->args);
         }
 
@@ -177,9 +178,7 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
 		}
         // return $this->response->setRedirect($redirectUrl);
         return $this->sendJsonResponse([
-            'data' => [
-                'paymentRedirectURL' => $redirectUrl
-            ],
+                'paymentRedirectURL' => $redirectUrl,
         ]);
 
 
@@ -279,8 +278,7 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
 
         // $this->args['redirectUrl'] = $this->storeManager->getStore()->getBaseUrl() . 'checkout/onepage/success';
 
-        $params = $this->beforeOrder ? '?quote_id=' : '?order_id=';
-        $this->args['redirectUrl'] = $this->baseURL . $this->controllerURL . $params . $this->args['custom']['quoteId'];
+        $this->args['redirectUrl'] = $this->baseURL . $this->controllerURL . '?order_id=' . $this->args['custom']['quoteId'];
         $this->args['preferredPaymentMethod'] = $this->paymentMethodCode == ConfigProvider::MOBILEPAY_HOSTED_CODE ? 'mobilePay' : 'card';
 
         /** Unset some unnecessary args */
@@ -330,7 +328,7 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
         $orderPayment->save();
 
         /** Manually insert transaction if after_order & delayed mode. */
-        if (!$this->beforeOrder && !$this->isInstantMode) {
+        if (!$this->isInstantMode) {
             $this->insertNewTransactionForPayment($orderPayment);
         }
     }
@@ -376,17 +374,15 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
         }
 
         /** Delete last order status history if conditions met. */
-        if (!$this->beforeOrder) {
-            if ($this->isInstantMode) {
-                $historyItem->delete();
-                return;
-            } else {
-                /** The price will be displayed in base currency. */
-                $baseGrandTotal = $this->order->getBaseGrandTotal();
-                $formattedPrice = $this->priceCurrencyInterface->format($baseGrandTotal, $includeContainer = false, $precision = 2, $scope = null, $currency = 'USD');
-                $commentContentModified = 'Authorized amount of ' . $formattedPrice . '. Transaction ID: "' . $this->paymentIntentId . '".';
-                $historyItem->setIsCustomerNotified(0); // @TODO check this (is notified? should we notify?)
-            }
+        if ($this->isInstantMode) {
+            $historyItem->delete();
+            return;
+        } else {
+            /** The price will be displayed in base currency. */
+            $baseGrandTotal = $this->order->getBaseGrandTotal();
+            $formattedPrice = $this->priceCurrencyInterface->format($baseGrandTotal, $includeContainer = false, $precision = 2, $scope = null, $currency = 'USD');
+            $commentContentModified = 'Authorized amount of ' . $formattedPrice . '. Transaction ID: "' . $this->paymentIntentId . '".';
+            $historyItem->setIsCustomerNotified(0); // @TODO check this (is notified? should we notify?)
         }
 
         $historyItem->setStatus(Order::STATE_PENDING_PAYMENT);
@@ -399,10 +395,6 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
      */
     private function checkPaymentIntentOnOrder()
     {
-        if ($this->beforeOrder) {
-            return false;
-        }
-
         /** @var \Magento\Sales\Model\Order\Payment $payment */
         $payment = $this->order->getPayment();
         $additionalInformation = $payment->getAdditionalInformation();
@@ -418,10 +410,6 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
      */
     private function savePaymentIntentOnOrder()
     {
-        if ($this->beforeOrder) {
-            return;
-        }
-
         /** @var \Magento\Sales\Model\Order\Payment $payment */
         $payment = $this->order->getPayment();
         $additionalInformation = $payment->getAdditionalInformation();
@@ -480,11 +468,11 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
      */
     private function getStoreConfigValue($configKey)
     {
-        /** This is not imperative to be used. It works even without it (?) */
-        $storeId = $this->storeManager->getStore()->getId();
-        $configPath = 'payment/' . $this->paymentMethodCode . '/' . $configKey;
-
-        return $this->scopeConfig->getValue($configPath, ScopeInterface::SCOPE_STORE, $storeId);
+        return $this->scopeConfig->getValue(
+            'payment/' . $this->paymentMethodCode . '/' . $configKey, 
+            ScopeInterface::SCOPE_STORE, 
+            $this->storeManager->getStore()->getId()
+        );
     }
 
     /**
@@ -515,12 +503,7 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
     {
         if (! $this->isTransactionSuccessful($transaction)) {
             $this->logger->debug("Transaction with error: " . json_encode($transaction, JSON_PRETTY_PRINT));
-
-            if ($this->beforeOrder) {
-                return $this->error($this->getResponseError($transaction));
-            } else {
-                return $this->redirectToErrorPage($this->getResponseError($transaction));
-            }
+            return $this->redirectToErrorPage($this->getResponseError($transaction));
         }
 
         return $transaction;

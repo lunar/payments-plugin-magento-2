@@ -32,145 +32,44 @@ define(
                     return false;
                 }
 
-                var self = this;
+                let self = this;
 
-                var paymentConfig = this.checkoutConfig.config;
-                var grandTotal = parseFloat(Quote.totals()['grand_total']);
-                var taxAmount = parseFloat(Quote.totals()['tax_amount']);
-                var totalAmount = grandTotal + taxAmount;
-                paymentConfig.amount.value = Math.round(totalAmount * this.checkoutConfig.multiplier);
+                let paymentConfig = this.checkoutConfig.config;
                 paymentConfig.test = 'test' === paymentConfig.test;
 
-                if (Quote.guestEmail) {
-                    paymentConfig.custom.customer.name = Quote.billingAddress()['firstname'] + " " + Quote.billingAddress()['lastname'];
-                    paymentConfig.custom.customer.email = Quote.guestEmail;
-                }
-
-                paymentConfig.custom.customer.phoneNo = Quote.billingAddress().telephone;
-                paymentConfig.custom.customer.address = Quote.billingAddress().street[0] + ", " 
-                                                        + Quote.billingAddress().city + ", " 
-                                                        + Quote.billingAddress().region + " " 
-                                                        + Quote.billingAddress().postcode + ", " 
-                                                        + Quote.billingAddress().countryId;
-
-                let isMobilePay = true;
+                let isMobilePay = 'lunarmobilepayhosted' === paymentConfig.paymentMethod;
                 self.logger.setContext(paymentConfig, Jquery, MageUrl, isMobilePay);
 
 
-                /** AFTER order flow. */
-                if (!self.beforeOrder){
-                    self.redirectAfterPlaceOrder = false;
+                self.redirectAfterPlaceOrder = false;
 
-                    /**
-                     * Workaround to save order transaction when authorize
-                     * Will be replaced from controller when get called on redirect
-                     */
-                    self.transactionid = 'trxid_placeholder';
+                /**
+                 * Workaround to save order transaction when authorize
+                 * Will be replaced from controller when get called on redirect
+                 */
+                self.transactionid = 'trxid_placeholder';
 
 
-                    /** Change default behavior after order. */
-                    self.afterPlaceOrder = async function () {
-                        await Jquery.ajax({
-                            type: "POST",
-                            dataType: "json",
-                            url: "/" + self.controllerURL,
-                            data: {
-                                args: paymentConfig,
-                            },
-                            success: function(data) {
-                                // window.location.replace(MageUrl.build(self.controllerURL + '?order_id=' + data.order_id));
-                                window.location.replace(data.paymentRedirectURL);
-                            },
-                            error: function(jqXHR, textStatus, errorThrown) {
-                                self.submitError('<div class="lunarmobilepay-error">' + errorThrown + '</div>');
-                            }
-                        });
-                    }
-
-
-                    self.logger.log("Payment mode: " + paymentConfig.checkoutMode);
-
-                    self.placeOrder();
-
-                }
-                /** BEFORE order flow. */
-                else {
-                    self.logger.log("Payment mode: " + paymentConfig.checkoutMode);
-                    
-                    this.initiatePaymentServerCall(paymentConfig, function(response) {
-
-                        if(response.error){
-                            self.logger.log("Error occured: " + response.error);
-
-                            self.submitError(response.error);
-                            return false;
+                /** Change default behavior after order. */
+                self.afterPlaceOrder = async function () {
+                    await Jquery.ajax({
+                        type: "POST",
+                        dataType: "json",
+                        url: "/" + self.controllerURL,
+                        data: {
+                            args: paymentConfig,
+                        },
+                        success: function(data) {
+                            // window.location.replace(MageUrl.build(self.controllerURL + '?order_id=' + data.order_id));
+                            window.location.replace(data.paymentRedirectURL);
+                        },
+                        error: function(jqXHR, textStatus, errorThrown) {
+                            self.submitError('<div class="lunarmobilepay-error">' + errorThrown + '</div>');
                         }
-
-                        if (response.data.authorizationId !== undefined && response.data.authorizationId !== "") {
-                            self.transactionid = response.data.authorizationId;
-                            self.logger.log("Payment successfull. Authorization ID: " + response.data.authorizationId);
-                            /*
-                                * In order to intercept the error of placeOrder request we need to monkey-patch
-                                * the `addErrorMessage` function of the messageContainer:
-                                * - first we duplicate the function on the same `messageContainer`, keeping the same `this`
-                                * - next we override the function with a new one, were we log the error, and then we call the old function
-                                */
-                            self.messageContainer.oldAddErrorMessage = self.messageContainer.addErrorMessage;
-                            self.messageContainer.addErrorMessage = async function (messageObj) {
-                                await self.logger.log("Place order failed. Reason: " + messageObj.message);
-
-                                self.messageContainer.oldAddErrorMessage(messageObj);
-                            }
-
-                            /*
-                                * In order to log the placeOrder success, we need deactivate
-                                * the redirect after order placed and call it manually, after
-                                * we send the logs to the server
-                                */
-                            self.redirectAfterPlaceOrder = false;
-                            self.afterPlaceOrder = async function () {
-                                await self.logger.log("Order placed successfully");
-                                RedirectOnSuccessAction.execute();
-                            }
-
-                            /* Everything is now setup, we can try placing the order */
-                            self.placeOrder();
-                        }
-
-                        // // self.disablePaymentButton();
-
-                        // if (response.data.type === 'redirect') {
-                        //     window.location.href = response.data.url;
-                        //     return false;
-                        // }
                     });
                 }
-            },
 
-            initiatePaymentServerCall: function(args, successCallback) {
-                var self = this;
-
-                args.hints = self.hints;
-
-                Jquery.ajax({
-                    type: "POST",
-                    dataType: "json",
-                    url: "/" + self.controllerURL,
-                    data: {
-                        args: args,
-                    },
-                    success: function(data) {
-                        successCallback(data)
-                    },
-                    error: function(jqXHR, textStatus, errorThrown) {
-                        self.logger.log("Error occurred on server call: " + errorThrown);
-
-                        self.submitError('<div class="lunarmobilepay-error">' + errorThrown + '</div>');
-                    },
-                    always: function() {
-                        //
-                    }
-                });
+                self.placeOrder();
             },
 
             submitError: function(errorMessage) {
