@@ -513,12 +513,6 @@
         </arguments>
     </virtualType>
 
-    <type name="Lunar\Payment\Observer\CheckoutAllSubmitAfterObserver">
-        <arguments>
-            <argument name="logger" xsi:type="object">LunarLogger</argument>
-        </arguments>
-    </type>
-
     <virtualType name="LunarHostedTransferFactory" type="Lunar\Payment\Gateway\Http\TransferFactory"></virtualType>
 
     <!-- Commands infrastructure -->
@@ -727,13 +721,6 @@
             <argument name="logger" xsi:type="object">LunarMobilePayHostedLogger</argument>
         </arguments>
     </virtualType>
-
-    <type name="Lunar\Payment\Observer\MobilePayCheckoutAllSubmitAfterObserver">
-        <arguments>
-            <argument name="logger" xsi:type="object">LunarMobilePayHostedLogger</argument>
-            <argument name="orderStatusHistory" xsi:type="object">Magento\Sales\Api\Data\OrderStatusHistoryInterface</argument>
-        </arguments>
-    </type>
 
     <!-- Commands infrastructure -->
     <virtualType name="LunarMobilePayHostedCommandPool" type="Magento\Payment\Gateway\Command\CommandPool">

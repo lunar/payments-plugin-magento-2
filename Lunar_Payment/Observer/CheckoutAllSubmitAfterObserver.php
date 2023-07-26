@@ -27,7 +27,7 @@ class CheckoutAllSubmitAfterObserver implements ObserverInterface
 
     const LUNAR_CREDITCARD_METHODS = [
         ConfigProvider::LUNAR_PAYMENT_CODE, 
-        ConfigProvider::LUNAR_PAYMENT_HOSTED_CODE
+        // ConfigProvider::LUNAR_PAYMENT_HOSTED_CODE
     ];
 
     private $logger;
@@ -92,13 +92,12 @@ class CheckoutAllSubmitAfterObserver implements ObserverInterface
         $payment = $order->getPayment();
         $methodName = $payment->getMethod();
 
-        $captureMode =  $this->scopeConfig->getValue('payment/' . $methodName . '/capture_mode', ScopeInterface::SCOPE_STORE);
-        $invoiceEmailMode =  $this->scopeConfig->getValue('payment/' . $methodName . '/invoice_email', ScopeInterface::SCOPE_STORE);
-
-
         if ( ! in_array($methodName, self::LUNAR_CREDITCARD_METHODS)) {
             return $this;
         }
+
+        $captureMode =  $this->scopeConfig->getValue('payment/' . $methodName . '/capture_mode', ScopeInterface::SCOPE_STORE);
+        $invoiceEmailMode =  $this->scopeConfig->getValue('payment/' . $methodName . '/invoice_email', ScopeInterface::SCOPE_STORE);
 
         if ("instant" == $captureMode) {
             if (!$order->getId()) {
