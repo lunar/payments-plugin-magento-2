@@ -51,6 +51,8 @@ if (!class_exists('Lunar\\ApiAdapter')) {
          */
         public function request($url, $data = null, $httpVerb = 'post')
         {
+            unset($data['lunarHosted']);
+
             $url = $this->apiUrl . '/' . $url;
             $ch = curl_init();
             curl_setopt($ch, CURLOPT_URL, $url);

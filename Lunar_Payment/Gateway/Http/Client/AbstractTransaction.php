@@ -38,20 +38,26 @@ abstract class AbstractTransaction implements ClientInterface
 		$response['object'] = [];
 
 		$amount = $this->helper->getAmount( $value['CURRENCY'], $value['AMOUNT'] );
-		$data = array(
+		$data = [
 			'amount'   => $amount,
-			'currency' => $value['CURRENCY']
-		);
-		$response['object'] = [];
+			'currency' => $value['CURRENCY'],
+			'lunarHosted' => [
+				'amount' => [
+					'currency' => $value['CURRENCY'],
+					'decimal' => number_format($value['AMOUNT'], 2),
+				],
+				'id' => $value['TXN_ID'],
+			],
+		];
 
 		try {
 			$response['object'] = $this->process( $value['TXN_ID'], $data );
 		} catch ( \Exception $e ) {
 			$message = __( $e->getMessage() ?: 'Sorry, but something went wrong' );
-			$this->logger->critical( $message );
+			$this->logger->debug( (array) $message );
 			throw new ClientException( $message );
 		} finally {
-			if ( $response['object'] == false ) {
+			if ( $response['object'] == false || isset($response['object']['declinedReason']) ) {
 				$response['RESULT_CODE'] = 0;
 			} else {
 				$response['RESULT_CODE'] = 1;
