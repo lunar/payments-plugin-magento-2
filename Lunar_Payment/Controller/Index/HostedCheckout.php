@@ -159,7 +159,6 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
      */
     public function execute()
     {
-        $this->setArgs();
 
         if ($this->order) { // change this check
             
@@ -313,7 +312,7 @@ file_put_contents("/var/www/var/log/zzz.log", json_encode($result, JSON_PRETTY_P
 
         if ($this->getStoreConfigValue('configuration_id')) {
             $this->args['mobilePayConfiguration'] = [
-                'configurationId' => $this->getStoreConfigValue('configuration_id'),
+                'configurationID' => $this->getStoreConfigValue('configuration_id'),
                 'logo'            => $this->getStoreConfigValue('logo_url'),
             ];
         }
@@ -390,7 +389,7 @@ file_put_contents("/var/www/var/log/zzz.log", json_encode($result, JSON_PRETTY_P
          * @see vendor\magento\module-sales\Model\Order\Payment.php L1134
          * in that case we can remove some of the methods here and use only one (?)
          */
-        $orderPayment->setTransactionId($this->paymentIntentId);
+        $orderPayment->setTransactionId($this->transactionId);
         $orderPayment->setIsTransactionClosed(0);
         $orderPayment->setShouldCloseParentTransaction(0);
         //  $paymentTransaction = $orderPayment->_addTransaction('authorization', null, true); // true - failsafe

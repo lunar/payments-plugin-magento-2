@@ -2,7 +2,6 @@
 
 namespace Lunar\Payment\lib\Lunar;
 
-include_once( 'LunarApiAdapterTrait.php' );
 include_once( 'ApiAdapter.php' );
 include_once( 'LunarHostedApiAdapter.php' );
 include_once( 'Transaction.php' );
@@ -58,7 +57,7 @@ if ( ! class_exists( 'Lunar\\Client' ) ) {
          */
         private static function setAdapter($privateApiKey, $paymentMethodCode)
         {
-            if ($paymentMethodCode != null && false !== strpos($paymentMethodCode, 'hosted')) { // we can change to str_contains after a while
+            if ($paymentMethodCode != null && str_contains($paymentMethodCode, 'hosted')) {
                 self::$adapter = new LunarHostedApiAdapter($privateApiKey);
             } else {
                 self::$adapter = new ApiAdapter($privateApiKey);
