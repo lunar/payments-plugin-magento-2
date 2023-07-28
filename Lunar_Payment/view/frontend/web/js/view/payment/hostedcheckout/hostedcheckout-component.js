@@ -4,7 +4,6 @@ define(
         'Magento_Checkout/js/view/payment/default',
         'Magento_Checkout/js/model/quote',
         'Magento_Checkout/js/model/customer-email-validator',
-        'Magento_Checkout/js/action/redirect-on-success',
         'mage/url'
    ],
     function (
@@ -12,7 +11,6 @@ define(
                 PaymentDefaultComponent,
                 Quote,
                 CustomerEmailValidator,
-                RedirectOnSuccessAction,
                 MageUrl,
            ) {
 
@@ -37,7 +35,7 @@ define(
                 let paymentConfig = this.checkoutConfig.config;
                 paymentConfig.test = 'test' === paymentConfig.test;
 
-                let isMobilePay = 'lunarmobilepayhosted' === paymentConfig.paymentMethod;
+                let isMobilePay = 'lunarmobilepayhosted' === paymentConfig.custom.paymentMethod;
                 self.logger.setContext(paymentConfig, Jquery, MageUrl, isMobilePay);
 
 
@@ -57,10 +55,9 @@ define(
                         dataType: "json",
                         url: "/" + self.controllerURL,
                         data: {
-                            args: paymentConfig,
+                            quote_id: paymentConfig.custom.quoteId,
                         },
                         success: function(data) {
-                            // window.location.replace(MageUrl.build(self.controllerURL + '?order_id=' + data.order_id));
                             window.location.replace(data.paymentRedirectURL);
                         },
                         error: function(jqXHR, textStatus, errorThrown) {
@@ -73,7 +70,7 @@ define(
             },
 
             submitError: function(errorMessage) {
-				Jquery('#lunarmobilepayhosted_messages').prepend(errorMessage).show()
+				Jquery(`#${this.checkoutConfig.config.custom.paymentMethod}_messages`).prepend(errorMessage).show()
             },
 
             disablePaymentButton: function() {

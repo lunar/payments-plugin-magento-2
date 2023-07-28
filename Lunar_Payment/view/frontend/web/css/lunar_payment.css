@@ -6,6 +6,7 @@
 }
 
 #lunarmobilepay_messages,
+#lunarpaymenthosted_messages,
 #lunarmobilepayhosted_messages {
     display: none;
     background-color: #ff5501;
