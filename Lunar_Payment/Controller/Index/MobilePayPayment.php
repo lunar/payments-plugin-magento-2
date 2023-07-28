@@ -281,6 +281,8 @@ class MobilePayPayment implements ActionInterface
 
         $commentContentModified = str_replace('trxid_placeholder', $this->authorizationId, $orderHistory['comment'] ?? '');
 
+        
+        /** @var \Magento\Sales\Model\Order\Status\History $historyItem */
         $historyItem = $this->orderStatusRepository->get($orderHistory['entity_id']);
 
 
@@ -295,7 +297,13 @@ class MobilePayPayment implements ActionInterface
                 return;
             } else {
                 $baseGrandTotal = $this->order->getBaseGrandTotal();
-                $formattedPrice = $this->priceCurrencyInterface->format($baseGrandTotal, $includeContainer = false, $precision = 2, $scope = null, $currency = 'USD');
+                $formattedPrice = $this->priceCurrencyInterface->format(
+                    $baseGrandTotal, 
+                    $includeContainer = false, 
+                    $precision = 2, 
+                    $scope = null,
+                    $currency = $this->order->getBaseCurrencyCode()
+                );
 
                 /** The price will be displayed in base currency. */
                 $commentContentModified = 'Authorized amount of ' . $formattedPrice . '. Transaction ID: "' . $this->authorizationId . '".';

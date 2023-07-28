@@ -233,7 +233,10 @@ class ConfigProvider implements ConfigProviderInterface
 	 * @return string
 	 */
 	private function getConfigJSON() {
+
+		/** @var Quote @quote */
 		$quote    	= $this->_getQuote();
+
 		$title    	= $this->getPopupTitle();
 		$currency 	= $this->getStoreCurrentCurrency();
 		$total      = $quote->getGrandTotal();
@@ -259,14 +262,14 @@ class ConfigProvider implements ConfigProviderInterface
 			$products[] = $product;
 		}
 
-		if (! $this->order) {
-			$quoteId = $quote->getId();
-			$quote   = $this->cartRepositoryInterface->get($quote->getId());
-		}
+		// if (! $this->order) {
+		// 	$quoteId = $quote->getId();
+		// 	$quote   = $this->cartRepositoryInterface->get($quote->getId());
+		// }
 
 		$customerData = $quote->getCustomer();
 		$email        = $quote->getBillingAddress()->getEmail();
-		$name         = $quote->getCustomer()->getFirstName() . " " . $quote->getCustomer()->getLastName();
+		$name         = $customerData->getFirstName() . " " . $customerData->getLastName();
 		$address      = $quote->getBillingAddress();
 
         if (! $email) { $email = $quote->getCustomerEmail(); }
@@ -293,7 +296,6 @@ class ConfigProvider implements ConfigProviderInterface
 			'IP'      => $ip->getRemoteAddress()
 		);
 
-
 		$productMetadata = $objectManager->get('Magento\Framework\App\ProductMetadataInterface');
 		$magentoVersion  = $productMetadata->getVersion();
 
@@ -304,11 +306,15 @@ class ConfigProvider implements ConfigProviderInterface
 				'currency' => $currency,
 				'exponent' => $exponent,
 				'value'    => $amount,
-				'decimal'  => number_format($total, $exponent),
+				/** 
+				 * @TODO re-check this in another scenarios, or get separators dynamically
+				 * see also in AbstractTransaction class
+				 */
+				'decimal'  => number_format($total, $exponent, '.', ''), // remove thousands separator
 			],
 			'locale' => $this->locale->getLocale(),
 			'custom' => [
-				'quoteId'      => $quote->getId(),
+				'quoteId' => $quote->getId(),
 				'products'     => $products,
                 'shipping tax' => number_format($quote->getShippingAddress()->getShippingInclTax() ?? 0.0, $exponent),
 				'customer'     => $customer,
@@ -329,17 +335,10 @@ class ConfigProvider implements ConfigProviderInterface
      */
     private function getStoreConfigValue($configKey)
     {
-        $storeId = $this->_storeManager->getStore()->getId();
-
-        /**
-         * "path" is composed based on etc/adminhtml/system.xml as "section_id/group_id/field_id"
-         */
-        $configPath = 'payment/' . $this->paymentMethodCode . '/' . $configKey;
-
         return $this->scopeConfig->getValue(
-            /*path*/ $configPath,
-            /*scopeType*/ ScopeInterface::SCOPE_STORE,
-			/*scopeCode*/ $storeId
-		);
+            'payment/' . $this->paymentMethodCode . '/' . $configKey, 
+            ScopeInterface::SCOPE_STORE, 
+            $this->_storeManager->getStore()->getId()
+        );
     }
 }

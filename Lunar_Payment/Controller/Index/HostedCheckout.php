@@ -10,7 +10,6 @@ use Magento\Sales\Model\OrderRepository;
 use Magento\Framework\App\RequestInterface;
 use Magento\Store\Model\StoreManagerInterface;
 use Magento\Framework\Controller\Result\JsonFactory;
-use Magento\Framework\App\Response\RedirectInterface;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 
 use Magento\Framework\Message\ManagerInterface;
@@ -19,6 +18,7 @@ use Magento\Sales\Api\OrderStatusHistoryRepositoryInterface;
 use Magento\Quote\Api\CartRepositoryInterface;
 
 use Magento\Sales\Model\Order;
+use Magento\Quote\Model\Quote;
 use Magento\Sales\Api\Data\TransactionInterface;
 use Magento\Framework\DB\TransactionFactory;
 use Magento\Sales\Model\ResourceModel\Order\Invoice\CollectionFactory;
@@ -36,18 +36,17 @@ use Lunar\Lunar;
  */
 class HostedCheckout implements \Magento\Framework\App\ActionInterface
 {
-    private $configProvider;
     private $storeManager;
     private $logger;
     private $scopeConfig;
     private $orderRepository;
     private $jsonFactory;
-    private $redirect;
+    private $requestInterface;
     private $redirectFactory;
     private $response;
     private $messageManager;
     private $orderStatusRepository;
-    private $cartRepositoryInterface;
+
     private $invoiceCollectionFactory;
     private $invoiceService;
     private $transactionFactory;
@@ -63,7 +62,6 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
 
     private string $baseURL = '';
     private bool $isInstantMode = false;
-    private $quote = null;
     private ?Order $order = null;
     private array $args = [];
     private string $paymentIntentId = '';
@@ -81,11 +79,12 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
         OrderRepository $orderRepository,
         JsonFactory $jsonFactory,
         RequestInterface $requestInterface,
-        RedirectInterface $redirect,
         RedirectFactory $redirectFactory,
         Http $response,
         ManagerInterface $messageManager,
         OrderStatusHistoryRepositoryInterface $orderStatusRepository,
+        Order $orderModel,
+        Quote $quote,
         CartRepositoryInterface $cartRepositoryInterface,
 
         CollectionFactory $invoiceCollectionFactory,
@@ -94,19 +93,18 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
         InvoiceSender $invoiceSender,
         PriceCurrencyInterface $priceCurrencyInterface
     ) {
-        $this->configProvider         = $configProvider;
+        
         $this->storeManager           = $storeManager;
         $this->logger                 = $logger;
         $this->scopeConfig            = $scopeConfig;
         $this->orderRepository        = $orderRepository;
         $this->jsonFactory            = $jsonFactory;
+        $this->requestInterface       = $requestInterface;
         
-        $this->redirect               = $redirect;
         $this->redirectFactory        = $redirectFactory;
         $this->response               = $response;
         $this->messageManager         = $messageManager;
         $this->orderStatusRepository  = $orderStatusRepository;
-        $this->cartRepositoryInterface = $cartRepositoryInterface;
 
         $this->invoiceCollectionFactory = $invoiceCollectionFactory;
         $this->invoiceService = $invoiceService;
@@ -114,31 +112,25 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
         $this->invoiceSender = $invoiceSender;
         $this->priceCurrencyInterface = $priceCurrencyInterface;
 
-        $this->isInstantMode = (CaptureMode::MODE_INSTANT == $this->getStoreConfigValue('capture_mode'));
-
-        $this->baseURL = $this->storeManager->getStore()->getBaseUrl();
-
         /**
          * If request has order_id, the request is from a redirect
          */
-        if ($orderId = $requestInterface->getParam('order_id')) {
+        if ($orderId = $this->requestInterface->getParam('order_id')) {
 
             $this->order = $this->orderRepository->get($orderId);
-            $this->configProvider->setOrder($this->order);
-            $this->paymentMethodCode = $this->order->getPayment()->getMethod();
 
-            $configData = $this->configProvider->getConfig()[$this->paymentMethodCode]['config'];
-
-            $this->args['amount'] = $configData['amount'];
-            $this->args['custom'] = $configData['custom'];
-
-            /** Set order Id instead of quote id, when after_order flow */
-            unset($this->args['custom']['quoteId']);
-            $this->args['custom'] = array_merge(['orderId' => $this->order->getIncrementId()], $this->args['custom']);
         } else {
-            $this->args = $requestInterface->getParam('args');
-            $this->paymentMethodCode = $this->args['custom']['paymentMethod'];
+            $quote = $cartRepositoryInterface->get($this->requestInterface->getParam('quote_id'));
+            $this->order = $orderModel->loadByIncrementId($quote->getReservedOrderId());
         }
+
+        $configProvider->setOrder($this->order);
+
+        $this->paymentMethodCode = $this->order->getPayment()->getMethod();
+        $this->args = $configProvider->getConfig()[$this->paymentMethodCode]['config'];
+        $this->baseURL = $this->storeManager->getStore()->getBaseUrl();
+        $this->isInstantMode = (CaptureMode::MODE_INSTANT == $this->getStoreConfigValue('capture_mode'));
+
 
         $this->testMode = 'test' == $this->getStoreConfigValue('transaction_mode');
         if ($this->testMode) {
@@ -159,14 +151,46 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
      */
     public function execute()
     {
+        /** 
+         * First controller call
+         */
+        if ($this->requestInterface->getParam('quote_id')) {
 
-        if ($this->order) { // change this check
-            
+            $this->setArgs();
 
+            /** @TODO is this check necessary here? */
+            if (! $this->getPaymentIntentFromOrder()) {
+                try {
+                    $this->paymentIntentId = $this->lunarApiClient->payments()->create($this->args);
+                } catch(\Lunar\Exception\ApiException $e) {
+                    return $this->sendJsonResponse(['error' => $e->getMessage()], 400);
+                }
+            }
+    
+            if (! $this->paymentIntentId) {
+                $errorMessage = 'An error occured creating payment for order. Please try again or contact system administrator.'; // <a href="/">Go to homepage</a>'
+                return $this->sendJsonResponse(['error' => $errorMessage], 400);
+            }
+    
+            $this->savePaymentIntentOnOrder();
+    
+            $redirectUrl = self::REMOTE_URL . $this->paymentIntentId;
+            if(isset($this->args['test'])) {
+                $redirectUrl = self::TEST_REMOTE_URL . $this->paymentIntentId;
+            }
+
+            return $this->sendJsonResponse([
+                'paymentRedirectURL' => $redirectUrl,
+            ]);
+
+        /** 
+         * After callback redirect
+         */
+        } else {
             $transaction = $this->lunarApiClient->payments()->fetch($this->getPaymentIntentFromOrder());
 
             $result = $this->parseApiTransactionResponse($transaction);
-file_put_contents("/var/www/var/log/zzz.log", json_encode($result, JSON_PRETTY_PRINT) . PHP_EOL, FILE_APPEND);
+
             if (! $result) {
                 return $this->redirectToErrorPage($this->getResponseError($transaction));
             }
@@ -200,94 +224,6 @@ file_put_contents("/var/www/var/log/zzz.log", json_encode($result, JSON_PRETTY_P
             $dataRedirectUrl = $this->storeManager->getStore()->getBaseUrl() . 'checkout/onepage/success';
             return $this->response->setRedirect($dataRedirectUrl);
         }
-
-        ////
-
-        $this->setArgs();
-
-        if (! $this->getPaymentIntentFromOrder()) {
-            $this->paymentIntentId = $this->lunarApiClient->payments()->create($this->args);
-        }
-
-        if (! $this->paymentIntentId) {
-            $errorMessage = 'An error occured creating payment for order. Please try again or contact system administrator.'; // <a href="/">Go to homepage</a>'
-            return $this->redirectToErrorPage($errorMessage);
-        }
-
-        $this->savePaymentIntentOnOrder();
-
-        $redirectUrl = self::REMOTE_URL . $this->paymentIntentId;
-        if(isset($this->args['test'])) {
-			$redirectUrl = self::TEST_REMOTE_URL . $this->paymentIntentId;
-		}
-        // return $this->response->setRedirect($redirectUrl);
-        return $this->sendJsonResponse([
-                'paymentRedirectURL' => $redirectUrl,
-        ]);
-
-
-
-        // $this->authorizationId = $response['data']['authorizationId'] ?? '';
-
-        // if($this->authorizationId) {
-        //     /**
-        //      * Before order, send json response to front component
-        //      */
-        //     if ($this->beforeOrder) {
-        //         return $this->sendJsonResponse($response);
-        //     }
-
-        //     /**
-        //      * After order, redirect to success after set trxid on quote payment and capture if instant mode.
-        //      */
-
-        //     /** Update info on order payment */
-        //     $this->setTxnIdOnOrderPayment();
-        //     $this->updateLastOrderStatusHistory();
-
-
-        //     if ($this->isInstantMode) {
-        //         // the order state will be changed after invoice creation
-        //         $this->createInvoiceForOrder();
-        //     }
-        //     else {
-        //         /**
-        //          * @see https://magento.stackexchange.com/questions/225524/magento-2-show-pending-payment-order-in-store-front/280227#280227
-        //          * Important note for Pending Payments
-        //          * If you have a "pending payment" status order,
-        //          * Magento 2 will cancel the order automatically after 8 hours if the payment status doesn't change.
-        //          * To change that, go to Stores > Configuration > Sales > Order Cron Settings
-        //          * and change the Lifetime to a greater value.
-        //          *
-        //          * If pending_payment orders not show in front, @see https://magento.stackexchange.com/a/225531/100054
-        //          */
-        //         $this->order->setState(Order::STATE_PENDING_PAYMENT)->setStatus(Order::STATE_PENDING_PAYMENT);
-        //     }
-
-        //     $this->order->save();
-
-        //     $dataRedirectUrl = $this->storeManager->getStore()->getBaseUrl() . 'checkout/onepage/success';
-        //     return $this->response->setRedirect($dataRedirectUrl);
-        // }
-
-        // if (($response['data']['type'] ?? '') === 'redirect' ) {
-        //     $dataRedirectUrl = $response['data']['url'];
-        //     return $this->response->setRedirect($dataRedirectUrl);
-        // }
-
-        // /**
-        //  * Redirect to error page if response is iframe & checkout mode is after_order
-        //  */
-        // if (
-        //     ! $this->beforeOrder
-        //     && isset($response['data']['type'])
-        //     && ($response['data']['type'] === 'iframe')
-        // ) {
-        //     $errorMessage = 'An error occured in server response. Please try again or contact system administrator.'; // <a href="/">Go to homepage</a>'
-        //     return $this->redirectToErrorPage($errorMessage);
-        // }
-
-        // return $this->jsonFactory->create()->setData(['data' => $response['data']]);
     }
 
     /**
@@ -298,7 +234,6 @@ file_put_contents("/var/www/var/log/zzz.log", json_encode($result, JSON_PRETTY_P
         if ($this->testMode) {
             $this->args['test'] = $this->getTestObject();
             // $this->args['test'] = new \stdClass();
-            // unset($this->args['test']);
         } else {
             // Unset 'test' param for live mode
             unset($this->args['test']);
@@ -317,17 +252,13 @@ file_put_contents("/var/www/var/log/zzz.log", json_encode($result, JSON_PRETTY_P
             ];
         }
 
-
-        $this->quote = $this->cartRepositoryInterface->get($this->args['custom']['quoteId']);
-        $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
-        $orderObject = $objectManager->get('Magento\Sales\Model\Order');
-        $this->order = $orderObject->loadByIncrementId($this->quote->getReservedOrderId());
-
-        // $this->args['redirectUrl'] = $this->baseURL . $this->controllerURL . '?order_id=' . $this->args['custom']['quoteId'];
+        unset($this->args['custom']['quoteId']);
+        /** Set order increment id to have the same number as in magento admin */
+        $this->args['custom'] = array_merge(['orderId' => $this->order->getIncrementId()], $this->args['custom']);
         $this->args['redirectUrl'] = $this->baseURL . $this->controllerURL . '?order_id=' . $this->order->getId();
         $this->args['preferredPaymentMethod'] = $this->paymentMethodCode == ConfigProvider::MOBILEPAY_HOSTED_CODE ? 'mobilePay' : 'card';
 
-        /** Unset some unnecessary args */
+        /** Unset some unnecessary args for hosted request */
         unset(
             // $this->args['test'],
             $this->args['title'],
@@ -335,24 +266,7 @@ file_put_contents("/var/www/var/log/zzz.log", json_encode($result, JSON_PRETTY_P
             $this->args['amount']['value'],
             $this->args['amount']['exponent'],
             $this->args['checkoutMode'],
-            // $this->args['custom']['quoteId']
         );
-    }
-
-    /**
-     * ERROR
-     */
-    private function error($message)
-    {
-        return ['error' => $message];
-    }
-
-    /**
-     * SUCCESS
-     */
-    private function success($data)
-    {
-        return ['data' => $data];
     }
 
 
@@ -412,6 +326,7 @@ file_put_contents("/var/www/var/log/zzz.log", json_encode($result, JSON_PRETTY_P
 
         $commentContentModified = str_replace('trxid_placeholder', $this->transactionId, $orderHistory['comment'] ?? '');
 
+        /** @var \Magento\Sales\Model\Order\Status\History $historyItem */
         $historyItem = $this->orderStatusRepository->get($orderHistory['entity_id']);
 
 
@@ -426,7 +341,13 @@ file_put_contents("/var/www/var/log/zzz.log", json_encode($result, JSON_PRETTY_P
         } else {
             /** The price will be displayed in base currency. */
             $baseGrandTotal = $this->order->getBaseGrandTotal();
-            $formattedPrice = $this->priceCurrencyInterface->format($baseGrandTotal, $includeContainer = false, $precision = 2, $scope = null, $currency = 'USD');
+            $formattedPrice = $this->priceCurrencyInterface->format(
+                $baseGrandTotal, 
+                $includeContainer = false, 
+                $precision = 2, 
+                $scope = null,
+                $currency = $this->order->getBaseCurrencyCode()
+            );
             $commentContentModified = 'Authorized amount of ' . $formattedPrice . '. Transaction ID: "' . $this->transactionId . '".';
             $historyItem->setIsCustomerNotified(0); // @TODO check this (is notified? should we notify?)
         }
@@ -458,8 +379,8 @@ file_put_contents("/var/www/var/log/zzz.log", json_encode($result, JSON_PRETTY_P
     {
         /** @var \Magento\Sales\Model\Order\Payment $payment */
         $payment = $this->order->getPayment();
-        $additionalInformation = $payment->getAdditionalInformation();
         // preserve already existing additional data
+        $additionalInformation = $payment->getAdditionalInformation();
         $additionalInformation[$this->intentIdKey] = $this->paymentIntentId;
         $payment->setAdditionalInformation($additionalInformation);
         $payment->save();
@@ -536,7 +457,6 @@ file_put_contents("/var/www/var/log/zzz.log", json_encode($result, JSON_PRETTY_P
     {
         // $this->messageManager->addError($errorMessage); // deprecated, but it can render html tags in message
         $this->messageManager->addErrorMessage($errorMessage);
-
         $dataRedirectUrl = 'lunar/index/displayerror';
         $resultRedirect = $this->redirectFactory->create();
         return $resultRedirect->setPath($dataRedirectUrl);
@@ -563,6 +483,11 @@ file_put_contents("/var/www/var/log/zzz.log", json_encode($result, JSON_PRETTY_P
      */
     private function isTransactionSuccessful($transaction)
     {
+        /// test
+        return true == $transaction['authorisationCreated'];
+        
+        
+        
         // if we don't have the order, we only check the successful status.
         if (!$this->order) {
             return true == $transaction['authorisationCreated'];
@@ -617,11 +542,13 @@ file_put_contents("/var/www/var/log/zzz.log", json_encode($result, JSON_PRETTY_P
                 "status"  => "valid",
                 "limit"   => [
                     "decimal"  => "399.95",
-                    "currency" => "USD"
+                    "currency" => "USD",
+                    
                 ],
                 "balance" => [
                     "decimal"  => "399.95",
-                    "currency" => "USD"
+                    "currency" => "USD",
+                    
                 ]
             ],
             "fingerprint" => "success",
@@ -632,4 +559,5 @@ file_put_contents("/var/www/var/log/zzz.log", json_encode($result, JSON_PRETTY_P
             ),
         ];
     }
+
 }

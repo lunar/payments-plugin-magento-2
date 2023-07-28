@@ -37,6 +37,7 @@ if (!class_exists('Lunar\\LunarHostedApiAdapter')) {
         /**
          * Place request via Lunar php sdk
          * The $url param is kept for compatibility with lib\Lunar\Transaction class
+         * @TODO adjust this method when the hosted transition will be completed
          */
         public function request($url, $data = null)
         {

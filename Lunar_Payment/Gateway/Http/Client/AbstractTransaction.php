@@ -44,7 +44,7 @@ abstract class AbstractTransaction implements ClientInterface
 			'lunarHosted' => [
 				'amount' => [
 					'currency' => $value['CURRENCY'],
-					'decimal' => number_format($value['AMOUNT'], 2),
+					'decimal' => number_format($value['AMOUNT'], 0, '.', ''),
 				],
 				'id' => $value['TXN_ID'],
 			],
