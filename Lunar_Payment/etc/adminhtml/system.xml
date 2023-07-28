@@ -336,6 +336,16 @@
                     <comment>If you deliver your product instantly (e.g. a digital product), choose Instant mode. If not, use Delayed. The capture in delayed mode is done when an invoice is created.</comment>
                 </field>
 
+                <field id="logo_url" translate="label comment" type="text" sortOrder="120" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Logo URL</label>
+                    <comment>URL must start with "https://", and the image must have PNG, JPG, JPEG extension.</comment>
+                    <backend_model>Lunar\Payment\Model\Adminhtml\Source\LogoUrl</backend_model>
+                    <validate>required-entry</validate>
+                    <depends>
+                        <field id="active">1</field>
+                    </depends>
+                </field>
+
                 <field id="invoice_email" translate="label" type="select" sortOrder="120" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Enable Invoice emails</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
@@ -445,7 +455,7 @@
                 <field id="logo_url" translate="label comment" type="text" sortOrder="120" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Logo URL</label>
                     <comment>URL must start with "https://", and the image must have PNG, JPG, JPEG extension.</comment>
-                    <backend_model>Lunar\Payment\Model\Adminhtml\Source\MobilePayLogoUrl</backend_model>
+                    <backend_model>Lunar\Payment\Model\Adminhtml\Source\LogoUrl</backend_model>
                     <validate>required-entry</validate>
                     <depends>
                         <field id="active">1</field>
