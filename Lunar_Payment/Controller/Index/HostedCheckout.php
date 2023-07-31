@@ -14,7 +14,6 @@ use Magento\Framework\App\Config\ScopeConfigInterface;
 
 use Magento\Framework\Message\ManagerInterface;
 use Magento\Framework\Controller\Result\RedirectFactory;
-use Magento\Sales\Api\OrderStatusHistoryRepositoryInterface;
 use Magento\Quote\Api\CartRepositoryInterface;
 
 use Magento\Sales\Model\Order;
@@ -45,7 +44,6 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
     private $redirectFactory;
     private $response;
     private $messageManager;
-    private $orderStatusRepository;
 
     private $invoiceCollectionFactory;
     private $invoiceService;
@@ -62,6 +60,7 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
 
     private string $baseURL = '';
     private bool $isInstantMode = false;
+    private $quotePayment = null;
     private ?Order $order = null;
     private array $args = [];
     private string $paymentIntentId = '';
@@ -82,11 +81,10 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
         RedirectFactory $redirectFactory,
         Http $response,
         ManagerInterface $messageManager,
-        OrderStatusHistoryRepositoryInterface $orderStatusRepository,
+        CartRepositoryInterface $cartRepositoryInterface,
         Order $orderModel,
         Quote $quote,
-        CartRepositoryInterface $cartRepositoryInterface,
-
+        
         CollectionFactory $invoiceCollectionFactory,
         InvoiceService $invoiceService,
         TransactionFactory $transactionFactory,
@@ -100,11 +98,9 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
         $this->orderRepository        = $orderRepository;
         $this->jsonFactory            = $jsonFactory;
         $this->requestInterface       = $requestInterface;
-        
         $this->redirectFactory        = $redirectFactory;
         $this->response               = $response;
         $this->messageManager         = $messageManager;
-        $this->orderStatusRepository  = $orderStatusRepository;
 
         $this->invoiceCollectionFactory = $invoiceCollectionFactory;
         $this->invoiceService = $invoiceService;
@@ -119,7 +115,12 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
 
             $this->order = $this->orderRepository->get($orderId);
 
+            /** @var \Magento\Quote\Model\Quote $quote */
+            $quote = $cartRepositoryInterface->get($this->order->getQuoteId());
+            $this->quotePayment = $quote->getPayment();
+            
         } else {
+            /** @var \Magento\Quote\Model\Quote $quote */
             $quote = $cartRepositoryInterface->get($this->requestInterface->getParam('quote_id'));
             $this->order = $orderModel->loadByIncrementId($quote->getReservedOrderId());
         }
@@ -198,9 +199,8 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
             $this->transactionId = $transaction['id'];
 
            /** Update info on order payment */
+            $this->setTxnIdOnQuotePayment();
             $this->setTxnIdOnOrderPayment();
-            $this->updateLastOrderStatusHistory();
-
 
             if ($this->isInstantMode) {
                 // the order state will be changed after invoice creation
@@ -216,6 +216,7 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
                  *
                  * If pending_payment orders not show in front, @see https://magento.stackexchange.com/a/225531/100054
                  */
+                $this->insertNewTransactionForOrderPayment();
                 $this->order->setState(Order::STATE_PENDING_PAYMENT)->setStatus(Order::STATE_PENDING_PAYMENT);
             }
 
@@ -269,92 +270,70 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
         );
     }
 
+    /**
+     * 
+     */
+    private function setTxnIdOnQuotePayment()
+    {
+        try {
+            $additionalInformation = ['transactionid' => $this->transactionId] + $this->quotePayment->getAdditionalInformation();
+            $this->quotePayment->setAdditionalInformation($additionalInformation);
+            $this->quotePayment->save();
+
+        } catch (\Exception $e) {
+            $this->logger->debug($e->getMessage());
+            $this->redirectToErrorPage(__('Something went wrong saving transaction ID on quote'));
+        }
+    }
 
     /**
-     * SET TXN ID ON ORDER PAYMENT
+     *
      */
     private function setTxnIdOnOrderPayment()
     {
-        /** @var \Magento\Sales\Model\Order\Payment $orderPayment */
-        $orderPayment = $this->order->getPayment();
-
-        $baseGrandTotal = $this->order->getBaseGrandTotal();
-        $grandTotal = $this->order->getGrandTotal();
-
-        $orderPayment->setBaseAmountAuthorized($baseGrandTotal);
-        $orderPayment->setAmountAuthorized($grandTotal);
-        $orderPayment->setAdditionalInformation('transactionid', $this->transactionId);
-        $orderPayment->setLastTransId($this->transactionId);
-        $orderPayment->save();
-
-        /** Manually insert transaction if after_order & delayed mode. */
-        if (!$this->isInstantMode) {
-            $this->insertNewTransactionForPayment($orderPayment);
-        }
-    }
-
-    /**
-     * INSERT NEW TRANSACTION FOR PAYMENT
-     */
-    private function insertNewTransactionForPayment($orderPayment)
-    {
-        /**
-         * @TODO can we use authorize() from Payment model ? (inherited by our model)
-         * @see vendor\magento\module-sales\Model\Order\Payment.php L1134
-         * in that case we can remove some of the methods here and use only one (?)
-         */
-        $orderPayment->setTransactionId($this->transactionId);
-        $orderPayment->setIsTransactionClosed(0);
-        $orderPayment->setShouldCloseParentTransaction(0);
-        //  $paymentTransaction = $orderPayment->_addTransaction('authorization', null, true); // true - failsafe
-        $paymentTransaction = $orderPayment->addTransaction(TransactionInterface::TYPE_AUTH);
-    }
-
-    /**
-     * UPDATE LAST ORDER STATUS HISTORY
-     */
-    private function updateLastOrderStatusHistory()
-    {
-        $statusHistories = $this->order->getStatusHistoryCollection()->toArray()['items'];
-
-        /** Get only last created history */
-        $orderHistory = $statusHistories[0] ?? null;
-
-        if (!$orderHistory) {
-            return;
-        }
-
-        $commentContentModified = str_replace('trxid_placeholder', $this->transactionId, $orderHistory['comment'] ?? '');
-
-        /** @var \Magento\Sales\Model\Order\Status\History $historyItem */
-        $historyItem = $this->orderStatusRepository->get($orderHistory['entity_id']);
-
-
-        if (!$historyItem) {
-            return;
-        }
-
-        /** Delete last order status history if conditions met. */
-        if ($this->isInstantMode) {
-            $historyItem->delete();
-            return;
-        } else {
-            /** The price will be displayed in base currency. */
+        try {
+            /** @var \Magento\Sales\Model\Order\Payment $orderPayment */
+            $orderPayment = $this->order->getPayment();
+    
             $baseGrandTotal = $this->order->getBaseGrandTotal();
-            $formattedPrice = $this->priceCurrencyInterface->format(
-                $baseGrandTotal, 
-                $includeContainer = false, 
-                $precision = 2, 
-                $scope = null,
-                $currency = $this->order->getBaseCurrencyCode()
-            );
-            $commentContentModified = 'Authorized amount of ' . $formattedPrice . '. Transaction ID: "' . $this->transactionId . '".';
-            $historyItem->setIsCustomerNotified(0); // @TODO check this (is notified? should we notify?)
-        }
+            $grandTotal = $this->order->getGrandTotal();
+    
+            $orderPayment->setBaseAmountAuthorized($baseGrandTotal);
+            $orderPayment->setAmountAuthorized($grandTotal);
+            // $orderPayment->setAdditionalInformation('transactionid', $this->transactionId);
+            $additionalInformation = ['transactionid' => $this->transactionId] + $orderPayment->getAdditionalInformation();
+            $orderPayment->setAdditionalInformation($additionalInformation);
+            $orderPayment->setLastTransId($this->transactionId);
+            $orderPayment->setQuotePaymentId($this->quotePayment->getId());
+            $orderPayment->save();
 
-        $historyItem->setStatus(Order::STATE_PENDING_PAYMENT);
-        $historyItem->setComment($commentContentModified);
-        $historyItem->save();
+        } catch (\Exception $e) {
+            $this->logger->debug($e->getMessage());
+            $this->redirectToErrorPage(__('Something went wrong saving transaction ID on payment'));
+        }
+    }
+
+    /**
+     * 
+     */
+    private function insertNewTransactionForOrderPayment()
+    {
+        try {
+            /** @var \Magento\Sales\Model\Order\Payment $orderPayment */
+            $orderPayment = $this->order->getPayment();
+
+            $orderPayment->setTransactionId($this->transactionId);
+            $orderPayment->setIsTransactionClosed(0);
+            $orderPayment->setShouldCloseParentTransaction(0);
+            $transaction = $orderPayment->addTransaction(TransactionInterface::TYPE_AUTH, null, $failSafe = true);
+
+            $commentContent = 'Authorized amount of ' . $this->getFormattedPriceWithCurrency() . '.';
+            $orderPayment->addTransactionCommentsToOrder($transaction, $commentContent);
+
+        } catch (\Exception $e) {
+            $this->logger->debug($e->getMessage());
+            $this->redirectToErrorPage(__('Something went wrong adding new transaction for payment'));
+        }
     }
 
     /**
@@ -482,23 +461,9 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
      * @return bool
      */
     private function isTransactionSuccessful($transaction)
-    {
-        /// test
-        return true == $transaction['authorisationCreated'];
-        
-        
-        
-        // if we don't have the order, we only check the successful status.
-        if (!$this->order) {
-            return true == $transaction['authorisationCreated'];
-        }
-        // // we need to overwrite the amount in the case of a subscription.
-        // if (!$amount) {
-        //     $amount = $this->order->getBaseGrandTotal();
-        // }
-
+    {   
         $matchCurrency = $this->order->getOrderCurrencyCode() == $transaction['amount']['currency'];
-        $matchAmount = $this->args['amount'] == $transaction['amount']['decimal'];
+        $matchAmount = $this->args['amount']['decimal'] == $transaction['amount']['decimal'];
 
         return (true == $transaction['authorisationCreated'] && $matchCurrency && $matchAmount);
     }
@@ -530,8 +495,30 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
         return implode(' ', $error);
     }
 
+	/**
+	 * 
+	 */
+	private function getFormattedPriceWithCurrency($useOrderCurrency = false) 
+    {
+        $orderTotal = $this->order->getBaseGrandTotal();
+        $currency = $this->order->getBaseCurrencyCode();
+
+        if ($useOrderCurrency) {
+            $orderTotal = $this->order->getGrandTotal();
+            $currency = $this->order->getOrderCurrencyCode();
+        }
+
+        return $this->priceCurrencyInterface->format(
+            $orderTotal, 
+            $includeContainer = false, 
+            $precision = 2, 
+            $scope = null,
+            $currency
+        );
+	}
+
     /**
-     * @TODO move this into ConfigProvider after complete implementation
+     * @TODO move this into ConfigProvider after complete hosted implementation
      */
     private function getTestObject(): array
     {
@@ -541,13 +528,13 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
                 "code"    => "valid",
                 "status"  => "valid",
                 "limit"   => [
-                    "decimal"  => "399.95",
-                    "currency" => "USD",
+                    "decimal"  => "25000.99",
+                    "currency" => $this->args['amount']['currency'],
                     
                 ],
                 "balance" => [
-                    "decimal"  => "399.95",
-                    "currency" => "USD",
+                    "decimal"  => "25000.99",
+                    "currency" => $this->args['amount']['currency'],
                     
                 ]
             ],

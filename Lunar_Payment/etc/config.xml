@@ -46,8 +46,9 @@
                 <debug>1</debug>
                 <active>0</active>
                 <model>LunarPaymentHostedFacade</model>
-                <payment_action>authorize</payment_action>
-                <order_status>pending_payment</order_status>
+                <!-- <payment_action>authorize</payment_action> -->
+                <!-- <order_status>pending_payment</order_status> -->
+                <order_status>pending</order_status>
                 <title>Lunar (Beta)</title>
                 <currency>USD</currency>
                 <can_authorize>1</can_authorize>
@@ -66,8 +67,9 @@
                 <debug>1</debug>
                 <active>0</active>
                 <model>LunarMobilePayHostedFacade</model>
-                <payment_action>authorize</payment_action>
-                <order_status>pending_payment</order_status>
+                <!-- <payment_action>authorize</payment_action> -->
+                <!-- <order_status>pending_payment</order_status> -->
+                <order_status>pending</order_status>
                 <title>Mobile Pay (Beta)</title>
                 <currency>USD</currency>
                 <can_authorize>1</can_authorize>

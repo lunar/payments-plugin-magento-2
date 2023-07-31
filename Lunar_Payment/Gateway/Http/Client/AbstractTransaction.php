@@ -38,13 +38,14 @@ abstract class AbstractTransaction implements ClientInterface
 		$response['object'] = [];
 
 		$amount = $this->helper->getAmount( $value['CURRENCY'], $value['AMOUNT'] );
+		$decimals = $this->helper->getCurrency($value['CURRENCY'])['exponent'] ?? 0;
 		$data = [
 			'amount'   => $amount,
 			'currency' => $value['CURRENCY'],
 			'lunarHosted' => [
 				'amount' => [
 					'currency' => $value['CURRENCY'],
-					'decimal' => number_format($value['AMOUNT'], 0, '.', ''),
+					'decimal' => number_format($value['AMOUNT'], $decimals, '.', ''),
 				],
 				'id' => $value['TXN_ID'],
 			],

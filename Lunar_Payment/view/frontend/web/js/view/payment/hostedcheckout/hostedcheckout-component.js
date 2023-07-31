@@ -2,14 +2,12 @@ define(
     [
         'jquery',
         'Magento_Checkout/js/view/payment/default',
-        'Magento_Checkout/js/model/quote',
         'Magento_Checkout/js/model/customer-email-validator',
         'mage/url'
    ],
     function (
                 Jquery,
                 PaymentDefaultComponent,
-                Quote,
                 CustomerEmailValidator,
                 MageUrl,
            ) {
@@ -18,11 +16,10 @@ define(
 
         return PaymentDefaultComponent.extend({
             defaults: {
-                transactionid: '',
-				paymentButtonSelector: '.action.primary.checkout',
-                redirectUrl: window.checkoutConfig.defaultSuccessPageUrl,
+                redirectAfterPlaceOrder: false,
                 controllerURL: "lunar/index/HostedCheckout",
                 logger: window.LunarLoggerHosted,
+				paymentButtonSelector: '.action.primary.checkout',
             },
 
             redirectToPayment: function () {
@@ -37,16 +34,6 @@ define(
 
                 let isMobilePay = 'lunarmobilepayhosted' === paymentConfig.custom.paymentMethod;
                 self.logger.setContext(paymentConfig, Jquery, MageUrl, isMobilePay);
-
-
-                self.redirectAfterPlaceOrder = false;
-
-                /**
-                 * Workaround to save order transaction when authorize
-                 * Will be replaced from controller when get called on redirect
-                 */
-                self.transactionid = 'trxid_placeholder';
-
 
                 /** Change default behavior after order. */
                 self.afterPlaceOrder = async function () {
@@ -80,7 +67,6 @@ define(
             enablePaymentButton: function() {
                 Jquery(this.paymentButtonSelector).prop('disabled', false);
             },
-
             
             /** Returns send check to info */
             getMailingAddress: function () {
@@ -100,15 +86,6 @@ define(
                 if (!logoUrl) return '';
 
                 return "  <img src='" + logoUrl + "' alt='mobilepay logo' style='height:5rem'>";
-            },
-
-            getData: function () {
-                return {
-                    "method": this.getCode(),
-                    'additional_data': {
-                        'transactionid': this.transactionid
-                    }
-                };
             },
 
             getCardLogos: function () {
