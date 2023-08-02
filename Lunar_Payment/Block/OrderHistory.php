@@ -69,7 +69,7 @@ class OrderHistory extends \Magento\Sales\Block\Order\History
                 'desc'
             );
         }
-        
+
         return $this->orders;
     }
 
