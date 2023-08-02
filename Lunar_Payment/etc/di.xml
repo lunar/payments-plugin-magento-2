@@ -865,5 +865,11 @@
     </virtualType>
 
 
+    <!-- CHECK UNPAID ORDERS -->
+    <!-- <preference for="Magento\Sales\Block\Order\History" type="Lunar\Payment\Block\OrderHistory" /> -->
+    <!-- <type name="Magento\Sales\Block\Order\History">
+       <plugin name="lunar_check_unpaid_orders" type="Lunar\Payment\Block\OrderHistory" />
+    </type> -->
+
 
 </config>

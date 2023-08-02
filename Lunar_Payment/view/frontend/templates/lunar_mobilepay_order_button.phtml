@@ -39,23 +39,23 @@
         && is_null($payment->getAmountAuthorized())
     ) {
 
-        $buttonText = '';
-        $orderHints = getAdditionalInfoFromPayment($payment, 'lunarmobilepayhosted_hints');
-        if ($orderHints) {
-            $buttonText = 'Finalize order';
-        } else {
-            $buttonText = 'Pay Now';
-        }
+        // $buttonText = '';
+        // $orderHints = getAdditionalInfoFromPayment($payment, 'lunarmobilepayhosted_hints');
+        // if ($orderHints) {
+        //     $buttonText = 'Finalize order';
+        // } else {
+        //     $buttonText = 'Pay Now';
+        // }
 
-        $payUrl = ('/lunar/index/HostedCheckout/?order_id=' . $orderId);
+        // $payUrl = ('/lunar/index/HostedCheckout/?order_id=' . $orderId);
 
-        $buttonHtml = '<a href="' . $payUrl
-                        . '" target="_blank" class="button action primary" '
-                        . 'style="display:flex; margin-top:5px; margin-bottom:10px;">'
-                        . $buttonText . '</a>';
+        // $buttonHtml = '<a href="' . $payUrl
+        //                 . '" target="_blank" class="button action primary" '
+        //                 . 'style="display:flex; margin-top:5px; margin-bottom:10px;">'
+        //                 . $buttonText . '</a>';
 
 
-        echo ($buttonHtml);
+        // echo ($buttonHtml);
     }
 
 

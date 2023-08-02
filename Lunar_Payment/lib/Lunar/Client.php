@@ -37,7 +37,7 @@ if ( ! class_exists( 'Lunar\\Client' ) ) {
          * @param null $privateApiKey
          * Returns the object that will be responsible for making the calls to the api
          *
-         * @return bool|null|ApiAdapter
+         * @return bool|null|ApiAdapter|LunarHostedApiAdapter
          */
         public static function getAdapter( $privateApiKey = null, $paymentMethodCode = '' ) {
             if ( self::$adapter ) {
