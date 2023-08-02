@@ -318,7 +318,7 @@ class ConfigProvider implements ConfigProviderInterface
 				'products'     => $products,
                 'shipping tax' => number_format($quote->getShippingAddress()->getShippingInclTax() ?? 0.0, $exponent),
 				'customer'     => $customer,
-				'ecommerce' => [
+				'platform' => [
 					'name'    => 'Magento',
 					'version' => $magentoVersion
 				],
