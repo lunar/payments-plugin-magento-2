@@ -64,6 +64,8 @@ define(
             LunarLogger.setContext(paymentConfig, Jquery, MageUrl);
 
             LunarLogger.log("Opening payment popup (multishipping)");
+            
+            delete paymentConfig.paymentMethod;
 
             sdkClient.pay(paymentConfig, callback);
         };

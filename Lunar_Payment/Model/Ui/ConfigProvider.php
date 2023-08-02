@@ -323,8 +323,8 @@ class ConfigProvider implements ConfigProviderInterface
 					'version' => $magentoVersion
 				],
 				'lunarPluginVersion' => self::PLUGIN_VERSION,
-				'paymentMethod'  => $this->paymentMethodCode,
 			],
+			'paymentMethod'  => $this->paymentMethodCode,
 		];
 	}
 

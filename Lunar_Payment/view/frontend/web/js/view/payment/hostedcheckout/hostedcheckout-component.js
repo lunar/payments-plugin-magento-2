@@ -32,7 +32,7 @@ define(
                 let paymentConfig = this.checkoutConfig.config;
                 paymentConfig.test = 'test' === paymentConfig.test;
 
-                let isMobilePay = 'lunarmobilepayhosted' === paymentConfig.custom.paymentMethod;
+                let isMobilePay = 'lunarmobilepayhosted' === paymentConfig.paymentMethod;
                 self.logger.setContext(paymentConfig, Jquery, MageUrl, isMobilePay);
 
                 /** Change default behavior after order. */

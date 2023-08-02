@@ -73,6 +73,8 @@ define(
 
                 paymentConfig.custom.customer.phoneNo = Quote.billingAddress().telephone;
                 paymentConfig.custom.customer.address = Quote.billingAddress().street[0] + ", " + Quote.billingAddress().city + ", " + Quote.billingAddress().region + " " + Quote.billingAddress().postcode + ", " + Quote.billingAddress().countryId;
+                
+                delete paymentConfig.paymentMethod;
 
                 let isMobilePay = true;
                 self.logger.setContext(paymentConfig, Jquery, MageUrl, isMobilePay);

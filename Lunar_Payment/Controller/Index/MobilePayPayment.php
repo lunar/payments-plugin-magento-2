@@ -512,6 +512,7 @@ class MobilePayPayment implements ActionInterface
             $this->args['title'],
             $this->args['locale'],
             $this->args['checkoutMode'],
+            $this->args['paymentMethod'],
             $this->args['amount']['decimal']
         );
 

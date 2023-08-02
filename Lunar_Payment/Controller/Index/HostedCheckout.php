@@ -259,7 +259,10 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
         $this->args['redirectUrl'] = $this->baseURL . $this->controllerURL . '?order_id=' . $this->order->getId();
         $this->args['preferredPaymentMethod'] = $this->paymentMethodCode == ConfigProvider::MOBILEPAY_HOSTED_CODE ? 'mobilePay' : 'card';
 
-        /** Unset some unnecessary args for hosted request */
+        /** 
+         * Unset some unnecessary args for hosted request
+         * @TODO remove them from ConfigProvider when hosted migration will be done
+         */
         unset(
             // $this->args['test'],
             $this->args['title'],
@@ -267,6 +270,7 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
             $this->args['amount']['value'],
             $this->args['amount']['exponent'],
             $this->args['checkoutMode'],
+            $this->args['paymentMethod'],
         );
     }
 
