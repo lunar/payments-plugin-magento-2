@@ -21,11 +21,11 @@ use Lunar\Payment\Gateway\Http\Client\TransactionAuthorize;
  */
 class ConfigProvider implements ConfigProviderInterface
 {
-	const PLUGIN_VERSION = '1.4.0';
+	const PLUGIN_VERSION = '2.0.0';
 
 	const LUNAR_PAYMENT_CODE = 'lunarpaymentmethod';
 	const MOBILEPAY_CODE = 'lunarmobilepay';
-	
+
 	const LUNAR_PAYMENT_HOSTED_CODE = 'lunarpaymenthosted';
 	const MOBILEPAY_HOSTED_CODE = 'lunarmobilepayhosted';
 
@@ -159,7 +159,7 @@ class ConfigProvider implements ConfigProviderInterface
 	}
 
 	/**
-	 * 
+	 *
 	 */
 	private function getStoreName()
 	{
@@ -306,7 +306,7 @@ class ConfigProvider implements ConfigProviderInterface
 				'currency' => $currency,
 				'exponent' => $exponent,
 				'value'    => $amount,
-				/** 
+				/**
 				 * @TODO re-check this in another scenarios, or get separators dynamically
 				 * see also in AbstractTransaction class
 				 */
@@ -336,8 +336,8 @@ class ConfigProvider implements ConfigProviderInterface
     private function getStoreConfigValue($configKey)
     {
         return $this->scopeConfig->getValue(
-            'payment/' . $this->paymentMethodCode . '/' . $configKey, 
-            ScopeInterface::SCOPE_STORE, 
+            'payment/' . $this->paymentMethodCode . '/' . $configKey,
+            ScopeInterface::SCOPE_STORE,
             $this->_storeManager->getStore()->getId()
         );
     }
