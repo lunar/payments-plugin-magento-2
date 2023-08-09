@@ -45,11 +45,14 @@ if (!class_exists('Lunar\\LunarHostedApiAdapter')) {
 
             $data = $data['lunarHosted']; // set in AbstractTransation class
 
-            return match (true) {
-                str_contains($url, 'capture') => $lunarApiClient->payments()->capture($data['id'], $data),
-                str_contains($url, 'refund') => $lunarApiClient->payments()->refund($data['id'], $data),
-                str_contains($url, 'void') => $lunarApiClient->payments()->cancel($data['id'], $data)
-            };
+            switch (true) {
+                case str_contains($url, 'capture'):
+                    return $lunarApiClient->payments()->capture($data['id'], $data);
+                case str_contains($url, 'refund'):
+                    return $lunarApiClient->payments()->refund($data['id'], $data);
+                case str_contains($url, 'void'):
+                    return $lunarApiClient->payments()->cancel($data['id'], $data);
+            }
         }
     }
 }
