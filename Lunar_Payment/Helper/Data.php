@@ -45,7 +45,7 @@ class Data extends AbstractHelper
 	 *
 	 * @return void
 	 */
-	public function handle_exceptions( ApiException|LunarApiException $exception, $context = '' ) {
+	public function handle_exceptions( $exception, $context = '' ) {
 		if ( ! $exception ) {
 			return false;
 		}
