@@ -10,12 +10,12 @@ define(
         'use strict';
         rendererList.push(
             {
-                type: 'lunarpaymentmethod',
-                component: 'Lunar_Payment/js/view/payment/lunarpaymentmethod/lunarpayment-component'
+                type: 'lunarpaymenthosted',
+                component: 'Lunar_Payment/js/view/payment/hostedcheckout/lunarpaymenthosted'
             },
             {
-                type: 'lunarmobilepay',
-                component: 'Lunar_Payment/js/view/payment/mobilepay/lunarmobilepay-component'
+                type: 'lunarmobilepayhosted',
+                component: 'Lunar_Payment/js/view/payment/hostedcheckout/mobilepayhosted'
             }
         );
         /** Add view logic here if needed */

@@ -22,6 +22,8 @@ class PaymentAdapter
     private $request;
     private $orderRepository;
     private $storeManager;
+    private $order = null;
+    private $paymentMethodCode = '';
     
     public function __construct(
             ScopeConfigInterface $scopeConfig,
@@ -35,6 +37,11 @@ class PaymentAdapter
         $this->orderRepository = $orderRepository;
         $this->storeManager = $storeManager;
 
+        if ($orderId = $this->request->getParam('order_id')) {
+            $this->order = $this->orderRepository->get($orderId);
+        }
+
+        $this->setPaymentMethodCode();
 
         $this->setPrivateKey();
     }
@@ -47,17 +54,11 @@ class PaymentAdapter
     {
         $transactionMode = $this->getStoreConfigValue('transaction_mode');
 
-        $privateKey = '';
+        $privateKey = "test" == $transactionMode
+                        ? $this->getStoreConfigValue('test_app_key')
+                        : $this->getStoreConfigValue('live_app_key');
 
-        if($transactionMode == "test"){
-            $privateKey = $this->getStoreConfigValue('test_app_key');
-        }
-
-        else if($transactionMode == "live"){
-            $privateKey = $this->getStoreConfigValue('live_app_key');
-        }
-
-        Client::setKey($privateKey);
+        Client::setKey($privateKey, $this->paymentMethodCode);
     }
 
     /**
@@ -97,42 +98,49 @@ class PaymentAdapter
      */
     private function getStoreConfigValue($configField)
     {
-        /**
-         * Get payment method code from cart if request came from frontend.
-         * It is null at this point in the after_order flow, but will be obtained bellow from order.
-         */
-        $paymentMethodCode = $this->getPaymentMethodFromQuote();
+        $configPath = 'payment/' . $this->paymentMethodCode . '/' . $configField;
 
+        return $this->scopeConfig->getValue(
+            /*path*/ $configPath,
+            /*scopeType*/ ScopeInterface::SCOPE_STORE,
+            /*scopeCode*/ $this->getStoreId()
+        );
+    }
+
+    /**
+     * 
+     */
+    private function getStoreId($order = null)
+    {
+        if ($this->order) {
+            return $this->order->getStore()->getId();
+        }
+        
         /** FRONTEND order processing flow. */
-        $orderStoreId = $this->storeManager->getStore()->getId();
+        return $this->storeManager->getStore()->getId();
+    }
 
+    /**
+     * Get payment method code from either quote or order
+     * @return string
+     */
+    private function setPaymentMethodCode()
+    {
         /**
          * ADMIN order processing flow (if order_id is present, the request is from admin)
          * OR
          * MOBILEPAY flow
          */
-        if ($orderId = $this->request->getParam('order_id')) {
-
-            $order = $this->orderRepository->get($orderId);
-
-            $orderStoreId = $order->getStore()->getId();
-
-            $paymentMethod = $order->getPayment()->getMethod();
-            $paymentMethodCode = $paymentMethod;
+        if ($this->order) {
+            return $this->paymentMethodCode = $this->order->getPayment()->getMethod();
         }
 
         /**
-         * "path" is composed based on etc/adminhtml/system.xml as "section_id/group_id/field_id"
+         * Get payment method code from cart if request came from frontend.
+         * It is null in the after_order flow
          */
-        $configPath = 'payment/' . $paymentMethodCode . '/' . $configField;
-
-        return $this->scopeConfig->getValue(
-            /*path*/ $configPath,
-            /*scopeType*/ ScopeInterface::SCOPE_STORE,
-            /*scopeCode*/ $orderStoreId
-        );
+        return $this->paymentMethodCode = $this->getPaymentMethodFromQuote();
     }
-
 
 	/**
 	 *

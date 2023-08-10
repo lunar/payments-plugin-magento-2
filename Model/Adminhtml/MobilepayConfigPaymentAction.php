@@ -19,14 +19,14 @@ use Lunar\Payment\Model\Ui\ConfigProvider;
 use Lunar\Payment\Model\Adminhtml\Source\CheckoutMode;
 
 /**
- * Class ChangeConfigConditionally
+ * Class MobilepayConfigPaymentAction
  *
  * Change payment_action to prevent inserting payment transaction
  * before an order is authorized in after_order payment flow.
  */
-class ChangeConfigConditionally extends Value
+class MobilepayConfigPaymentAction extends Value
 {
-    const MOBILEPAY_CODE = ConfigProvider::MOBILEPAY_CODE;
+    const MOBILEPAY_HOSTED_CODE = ConfigProvider::MOBILEPAY_HOSTED_CODE;
 
     public function __construct(
         ConfigInterface $configInterface,
@@ -47,8 +47,8 @@ class ChangeConfigConditionally extends Value
         $this->configScope = $websiteId ? ScopeInterface::SCOPE_WEBSITE : ($storeId ? ScopeInterface::SCOPE_STORE : ScopeConfigInterface::SCOPE_TYPE_DEFAULT);
         $this->entityId = $websiteId ?? $storeId ?? 0; // set the default if the request did not come for either the website or the store
 
-        $this->paymentActionPath = 'payment/' . self::MOBILEPAY_CODE . '/payment_action';
-        // $this->checkoutModePath = 'payment/' . self::MOBILEPAY_CODE . '/checkout_mode';
+        $this->paymentActionPath = 'payment/' . self::MOBILEPAY_HOSTED_CODE . '/payment_action';
+        // $this->checkoutModePath = 'payment/' . self::MOBILEPAY_HOSTED_CODE . '/checkout_mode';
 
         parent::__construct($context, $registry, $scopeConfigInterface, $cacheTypeList, $resource, $resourceCollection, $data);
     }

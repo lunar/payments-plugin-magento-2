@@ -7,12 +7,20 @@ use Magento\Framework\Event\Observer;
 use Magento\Sales\Model\Order;
 use Magento\Sales\Api\Data\OrderPaymentInterface;
 
+use Lunar\Payment\Model\Ui\ConfigProvider;
+
 /**
  * Change order status to canceled when void
  */
 class SalesOrderPaymentVoidObserver implements ObserverInterface
 {
-    const LUNAR_PAYMENT_METHODS = ['lunarpaymentmethod', 'lunarmobilepay'];
+    const LUNAR_PAYMENT_METHODS = [
+        ConfigProvider::LUNAR_PAYMENT_CODE,
+        ConfigProvider::MOBILEPAY_CODE,
+        
+        ConfigProvider::LUNAR_PAYMENT_HOSTED_CODE,
+        ConfigProvider::MOBILEPAY_HOSTED_CODE,
+    ];
 
     /**
      * @param Observer $observer

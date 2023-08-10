@@ -21,10 +21,13 @@ use Lunar\Payment\Gateway\Http\Client\TransactionAuthorize;
  */
 class ConfigProvider implements ConfigProviderInterface
 {
-	const PLUGIN_VERSION = '1.4.0';
+	const PLUGIN_VERSION = '2.0.0';
 
 	const LUNAR_PAYMENT_CODE = 'lunarpaymentmethod';
 	const MOBILEPAY_CODE = 'lunarmobilepay';
+
+	const LUNAR_PAYMENT_HOSTED_CODE = 'lunarpaymenthosted';
+	const MOBILEPAY_HOSTED_CODE = 'lunarmobilepayhosted';
 
 	private $scopeConfig;
 	private $_cart;
@@ -40,7 +43,6 @@ class ConfigProvider implements ConfigProviderInterface
 	private $order = null;
 	private ?string $paymentMethodCode = '';
 	private ?string $transactionMode = '';
-	private ?string $isActive = '';
 
 
 	public function __construct(
@@ -86,20 +88,18 @@ class ConfigProvider implements ConfigProviderInterface
 		foreach ($this->paymentMethods as $methodCode) {
 
 			$this->paymentMethodCode = $methodCode;
-
 			$this->transactionMode = $this->getStoreConfigValue('transaction_mode');
-			$this->isActive = $this->getStoreConfigValue('active');
 
-			/** Send config data only when active. */
-			if ($this->isActive) {
+			/** Send config data only when a payment method is active. */
+			if ($this->getStoreConfigValue('active')) {
 				$configData['payment'][$methodCode]['transactionResults'] = [
 													TransactionAuthorize::SUCCESS => __('Success'),
 													TransactionAuthorize::FAILURE => __('Fraud'),
 												];
 
 				$configData[$methodCode] = [
-					'checkoutMode' => $this->getCheckoutMode(),
-					'description'  => $this->getDescription(),
+					'checkoutMode' => $this->getStoreConfigValue('checkout_mode'),
+					'description'  => $this->getStoreConfigValue('description'),
 					'config'       => $this->getConfigJSON(),
 					'publicapikey' => $this->getPublicKey(),
 					'cards'        => $this->getAcceptedCards(),
@@ -115,30 +115,6 @@ class ConfigProvider implements ConfigProviderInterface
 	}
 
 	/**
-	 * Retrieve Checkout Mode from DB
-	 *
-	 * @return string
-	 */
-	private function getCheckoutMode() {
-		$checkoutMode = $this->getStoreConfigValue('checkout_mode');
-		if (!$checkoutMode) {
-			$checkoutMode = 'before_order';
-		}
-
-		return $checkoutMode;
-	}
-
-	/**
-	 * Retrieve description from backend
-	 *
-	 * @return string
-	 */
-
-	private function getDescription() {
-		return $this->getStoreConfigValue('description');
-	}
-
-	/**
 	 * Retrieve URLs of selected credit cards from backend
 	 *
 	 * @return array
@@ -146,16 +122,16 @@ class ConfigProvider implements ConfigProviderInterface
 
 	private function getImageUrl() {
 
-		if (self::MOBILEPAY_CODE == $this->paymentMethodCode) {
-			return [$this->_assetRepo->getUrl( 'Lunar_Payment::images/paymenticons/mobilepay-logo.png' )];
+		if (in_array($this->paymentMethodCode, [self::MOBILEPAY_CODE, self::MOBILEPAY_HOSTED_CODE])) {
+			return [$this->_assetRepo->getUrl('Lunar_Payment::images/paymenticons/mobilepay-logo.png' )];
 		}
 
 		$acceptedCards = $this->getAcceptedCards();
-		$selectedCards = explode( ",", $acceptedCards );
+		$selectedCards = explode(",", $acceptedCards );
 
 		$finalCards = array();
 		foreach ($selectedCards as $value) {
-			$finalCards[] = $this->_assetRepo->getUrl( 'Lunar_Payment::images/paymenticons/' . $value . '.svg' );
+			$finalCards[] = $this->_assetRepo->getUrl('Lunar_Payment::images/paymenticons/' . $value . '.svg' );
 		}
 
 		return $finalCards;
@@ -166,7 +142,7 @@ class ConfigProvider implements ConfigProviderInterface
 	 */
 	private function _getQuote() {
 		if ($this->order) {
-			return $this->cartRepositoryInterface->get( $this->order->getQuoteId() );
+			return $this->cartRepositoryInterface->get($this->order->getQuoteId());
 		}
 
 		return $this->_cart->getQuote();
@@ -179,19 +155,19 @@ class ConfigProvider implements ConfigProviderInterface
 	 */
 
 	private function getPopupTitle() {
-		$title = $this->getStoreConfigValue('popup_title');
-		if ( ! $title ) {
+		return $this->getStoreConfigValue('popup_title') ?: $this->getStoreName();
+	}
 
-			$title =$this->_storeManager->getStore()->getName();
-		}
-
-		return $title;
+	/**
+	 *
+	 */
+	private function getStoreName()
+	{
+		return $this->_storeManager->getStore()->getName();
 	}
 
 	private function getLogsEnabled() {
-		$enabled = $this->getStoreConfigValue('enable_logs');
-
-		return $enabled === "1";
+		return "1" === $this->getStoreConfigValue('enable_logs');
 	}
 
 	/**
@@ -201,7 +177,7 @@ class ConfigProvider implements ConfigProviderInterface
 	 */
 
 	private function getAcceptedCards() {
-		return $this->getStoreConfigValue('acceptedcards');
+		return $this->getStoreConfigValue('acceptedcards') ?? '';
 	}
 
 	/**
@@ -211,13 +187,9 @@ class ConfigProvider implements ConfigProviderInterface
 	 */
 
 	private function getPublicKey() {
-		$key = $this->getStoreConfigValue('live_public_key');
-
-		if ('test' == $this->transactionMode) {
-			$key = $this->getStoreConfigValue('test_public_key');
-		}
-
-		return $key;
+		return 'test' === $this->transactionMode
+				? $this->getStoreConfigValue('test_public_key')
+				: $this->getStoreConfigValue('live_public_key');
 	}
 
 	/**
@@ -239,18 +211,18 @@ class ConfigProvider implements ConfigProviderInterface
 	 * @return float|int
 	 */
 
-	private function getMultiplier( $currency ) {
-		return $this->helper->getCurrencyMultiplier( $currency );
+	private function getMultiplier($currency) {
+		return $this->helper->getCurrencyMultiplier($currency);
 
 	}
 
-	private function getAmount( $currency,$amount ) {
-		return $this->helper->getAmount( $currency,$amount );
+	private function getAmount($currency,$amount) {
+		return $this->helper->getAmount($currency, $amount);
 
 	}
 
-	private function getExponent( $currency ) {
-		return $this->helper->getCurrency( $currency )['exponent'];
+	private function getExponent($currency) {
+		return $this->helper->getCurrency($currency)['exponent'];
 
 	}
 
@@ -261,7 +233,10 @@ class ConfigProvider implements ConfigProviderInterface
 	 * @return string
 	 */
 	private function getConfigJSON() {
+
+		/** @var Quote @quote */
 		$quote    	= $this->_getQuote();
+
 		$title    	= $this->getPopupTitle();
 		$currency 	= $this->getStoreCurrentCurrency();
 		$total      = $quote->getGrandTotal();
@@ -271,7 +246,7 @@ class ConfigProvider implements ConfigProviderInterface
 
 
 		$products = array();
-		foreach ( $quote->getAllVisibleItems() as $item ) {
+		foreach ($quote->getAllVisibleItems() as $item) {
 			$product    = array(
 				'ID'       => $item->getProductId(),
 				'SKU'      => $item->getSku(),
@@ -287,20 +262,20 @@ class ConfigProvider implements ConfigProviderInterface
 			$products[] = $product;
 		}
 
-		if ( ! $this->order) {
-			$quoteId = $quote->getId();
-			$quote   = $this->cartRepositoryInterface->get( $quote->getId() );
-		}
+		// if (! $this->order) {
+		// 	$quoteId = $quote->getId();
+		// 	$quote   = $this->cartRepositoryInterface->get($quote->getId());
+		// }
 
 		$customerData = $quote->getCustomer();
 		$email        = $quote->getBillingAddress()->getEmail();
-		$name         = $quote->getCustomer()->getFirstName() . " " . $quote->getCustomer()->getLastName();
+		$name         = $customerData->getFirstName() . " " . $customerData->getLastName();
 		$address      = $quote->getBillingAddress();
 
-        if ( ! $email ) { $email = $quote->getCustomerEmail(); }
-        if ( ! $name ) { $name = $quote->getCustomerName(); }
+        if (! $email) { $email = $quote->getCustomerEmail(); }
+        if (! $name) { $name = $quote->getCustomerName(); }
 
-        if ( ! $address) {
+        if (! $address) {
             $address = $quote->getShippingAddress();
         }
 
@@ -311,7 +286,7 @@ class ConfigProvider implements ConfigProviderInterface
 							. $address->getCountryId();
 
 		$objectManager = ObjectManager::getInstance();
-		$ip            = $objectManager->get( 'Magento\Framework\HTTP\PhpEnvironment\RemoteAddress' );
+		$ip            = $objectManager->get('Magento\Framework\HTTP\PhpEnvironment\RemoteAddress');
 
 		$customer = array(
 			'name'    => $name,
@@ -321,31 +296,35 @@ class ConfigProvider implements ConfigProviderInterface
 			'IP'      => $ip->getRemoteAddress()
 		);
 
-
-		$productMetadata = $objectManager->get( 'Magento\Framework\App\ProductMetadataInterface' );
+		$productMetadata = $objectManager->get('Magento\Framework\App\ProductMetadataInterface');
 		$magentoVersion  = $productMetadata->getVersion();
-		$platform = array(
-			'name'    => 'Magento',
-			'version' => $magentoVersion
-		);
 
 		return [
-			'test'    		=> $this->transactionMode,
-			'title'    		=> $title,
-			'amount'   		=> [
+			'test' => $this->transactionMode,
+			'title' => $title,
+			'amount' => [
 				'currency' => $currency,
 				'exponent' => $exponent,
 				'value'    => $amount,
+				/**
+				 * @TODO re-check this in another scenarios, or get separators dynamically
+				 * see also in AbstractTransaction class
+				 */
+				'decimal'  => number_format($total, $exponent, '.', ''), // remove thousands separator
 			],
-			'locale'   		=> $this->locale->getLocale(),
-			'custom'   		=> [
-				'quoteId' 		=> $quote->getId(),
-				'products'  	=> $products,
-                'shipping tax'  => number_format($quote->getShippingAddress()->getShippingInclTax() ?? 0.0, $exponent),
-				'customer'  	=> $customer,
-				'platform'  	=> $platform,
-				'pluginVersion' => self::PLUGIN_VERSION,
-			]
+			'locale' => $this->locale->getLocale(),
+			'custom' => [
+				'quoteId' => $quote->getId(),
+				'products'     => $products,
+                'shipping tax' => number_format($quote->getShippingAddress()->getShippingInclTax() ?? 0.0, $exponent),
+				'customer'     => $customer,
+				'platform' => [
+					'name'    => 'Magento',
+					'version' => $magentoVersion
+				],
+				'lunarPluginVersion' => self::PLUGIN_VERSION,
+			],
+			'paymentMethod'  => $this->paymentMethodCode,
 		];
 	}
 
@@ -356,17 +335,10 @@ class ConfigProvider implements ConfigProviderInterface
      */
     private function getStoreConfigValue($configKey)
     {
-        $storeId = $this->_storeManager->getStore()->getId();
-
-        /**
-         * "path" is composed based on etc/adminhtml/system.xml as "section_id/group_id/field_id"
-         */
-        $configPath = 'payment/' . $this->paymentMethodCode . '/' . $configKey;
-
         return $this->scopeConfig->getValue(
-            /*path*/ $configPath,
-            /*scopeType*/ ScopeInterface::SCOPE_STORE,
-			/*scopeCode*/ $storeId
+            'payment/' . $this->paymentMethodCode . '/' . $configKey,
+            ScopeInterface::SCOPE_STORE,
+            $this->_storeManager->getStore()->getId()
         );
     }
 }

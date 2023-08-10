@@ -14,13 +14,19 @@ use Magento\Sales\Model\Order\Invoice;
 use Magento\Store\Model\ScopeInterface;
 use Magento\Sales\Api\Data\OrderStatusHistoryInterface;
 
+use Lunar\Payment\Model\Ui\ConfigProvider;
 
 /**
  *
  */
 class MobilePayCheckoutAllSubmitAfterObserver implements ObserverInterface
 {
-    const MOBILEPAY_CODE = 'lunarmobilepay';
+    const LUNAR_MOBILEPAY_METHODS = [
+        ConfigProvider::MOBILEPAY_CODE,
+        // ConfigProvider::MOBILEPAY_HOSTED_CODE,
+    ];
+
+    private $methodCode = '';
 
     private $logger;
     protected $redirectFactory;
@@ -68,13 +74,13 @@ class MobilePayCheckoutAllSubmitAfterObserver implements ObserverInterface
         }
 
         $payment = $order->getPayment();
-        $methodName = $payment ? $payment->getMethod() : '';
+        $this->methodCode = $payment ? $payment->getMethod() : '';
 
-        if (!$payment || (self::MOBILEPAY_CODE != $methodName)) {
+        if (!$payment || ! in_array($this->methodCode, self::LUNAR_MOBILEPAY_METHODS)) {
             return $this;
         }
 
-        $checkoutMode =  $this->scopeConfig->getValue('payment/' . self::MOBILEPAY_CODE . '/checkout_mode', ScopeInterface::SCOPE_STORE);
+        $checkoutMode =  $this->scopeConfig->getValue('payment/' . $this->methodCode . '/checkout_mode', ScopeInterface::SCOPE_STORE);
 
         /** Perform redirect in after_order flow. */
         if ('after_order' == $checkoutMode) {
@@ -103,7 +109,7 @@ class MobilePayCheckoutAllSubmitAfterObserver implements ObserverInterface
      */
     private function processOrder(Order $order)
     {
-        $captureMode =  $this->scopeConfig->getValue('payment/' . self::MOBILEPAY_CODE . '/capture_mode', ScopeInterface::SCOPE_STORE);
+        $captureMode =  $this->scopeConfig->getValue('payment/' . $this->methodCode . '/capture_mode', ScopeInterface::SCOPE_STORE);
 
         if ("instant" == $captureMode) {
 
@@ -121,7 +127,7 @@ class MobilePayCheckoutAllSubmitAfterObserver implements ObserverInterface
      */
     private function createInvoiceForOrder($order)
     {
-        $invoiceEmailMode =  $this->scopeConfig->getValue('payment/' . self::MOBILEPAY_CODE . '/invoice_email', ScopeInterface::SCOPE_STORE);
+        $invoiceEmailMode =  $this->scopeConfig->getValue('payment/' . $this->methodCode . '/invoice_email', ScopeInterface::SCOPE_STORE);
 
         try {
             $invoices = $this->invoiceCollectionFactory->create()

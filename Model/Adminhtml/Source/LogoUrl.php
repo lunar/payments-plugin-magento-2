@@ -6,9 +6,9 @@ use Magento\Framework\App\Config\Value;
 use Magento\Framework\Exception\LocalizedException;
 
 /**
- * Class MobilePayLogoUrl
+ * Class LogoUrl
  */
-class MobilePayLogoUrl extends Value
+class LogoUrl extends Value
 {
     /**
      * Method used for checking if the new value is valid before saving.
@@ -19,6 +19,18 @@ class MobilePayLogoUrl extends Value
     {
         $logoUrl = $this->getValue();
         $allowedExtensions = ['png', 'jpg', 'jpeg'];
+
+        if (! preg_match('/^https:\/\//', $logoUrl)) {
+            /** Mark the new value as invalid */
+            $this->_dataSaveAllowed = false;
+			throw new LocalizedException(__('The image url must begin with https://.'));
+		}
+
+        if (! filter_var($logoUrl, FILTER_VALIDATE_URL)) {
+            /** Mark the new value as invalid */
+            $this->_dataSaveAllowed = false;
+			throw new LocalizedException(__('The provided URL isn\'t valid'));
+		}
 
         try {
             $fileSpecs = getimagesize($logoUrl);
@@ -31,12 +43,6 @@ class MobilePayLogoUrl extends Value
 
         // $fileDimensions = ($fileSpecs[0] ?? '') . 'x' . ($fileSpecs[1] ?? '');
         // strcmp('250x250', $fileDimensions) !== 0      // disabled for the moment
-
-        if (! preg_match('/^https:\/\//', $logoUrl)) {
-            /** Mark the new value as invalid */
-            $this->_dataSaveAllowed = false;
-			throw new LocalizedException(__('The image url must begin with https://.'));
-		}
 
         if (! in_array($fileExtension, $allowedExtensions)) {
             /** Mark the new value as invalid */

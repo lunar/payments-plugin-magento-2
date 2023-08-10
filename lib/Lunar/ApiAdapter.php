@@ -12,8 +12,8 @@ namespace Lunar\Payment\lib\Lunar;
 if (!class_exists('Lunar\\ApiAdapter')) {
     class ApiAdapter
     {
+        private $apiUrl = 'https://api.paylike.io';
 
-        public $apiUrl = 'https://api.paylike.io';
         private $apiKey;
 
         /**
@@ -51,6 +51,8 @@ if (!class_exists('Lunar\\ApiAdapter')) {
          */
         public function request($url, $data = null, $httpVerb = 'post')
         {
+            unset($data['lunarHosted']);
+
             $url = $this->apiUrl . '/' . $url;
             $ch = curl_init();
             curl_setopt($ch, CURLOPT_URL, $url);
@@ -86,6 +88,5 @@ if (!class_exists('Lunar\\ApiAdapter')) {
                 return false;
             }
         }
-
     }
 }

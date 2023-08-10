@@ -17,24 +17,25 @@ use Magento\Sales\Model\Order;
 use Magento\Sales\Model\Order\Invoice;
 use Magento\Store\Model\ScopeInterface;
 
+use Lunar\Payment\Model\Ui\ConfigProvider;
 
+/**
+ * Class CheckoutAllSubmitAfterObserver
+ */
 class CheckoutAllSubmitAfterObserver implements ObserverInterface
 {
-    const LUNAR_PAYMENT_CODE = 'lunarpaymentmethod';
 
+    const LUNAR_CREDITCARD_METHODS = [
+        ConfigProvider::LUNAR_PAYMENT_CODE, 
+        // ConfigProvider::LUNAR_PAYMENT_HOSTED_CODE
+    ];
 
     private $logger;
-
     protected $scopeConfig;
-
     protected $invoiceCollectionFactory;
-
     protected $invoiceService;
-
     protected $invoiceSender;
-
     protected $transactionFactory;
-
 
     /**
      * @param Logger $logger
@@ -91,13 +92,12 @@ class CheckoutAllSubmitAfterObserver implements ObserverInterface
         $payment = $order->getPayment();
         $methodName = $payment->getMethod();
 
-        $captureMode =  $this->scopeConfig->getValue('payment/' . $methodName . '/capture_mode', ScopeInterface::SCOPE_STORE);
-        $invoiceEmailMode =  $this->scopeConfig->getValue('payment/' . $methodName . '/invoice_email', ScopeInterface::SCOPE_STORE);
-
-
-        if (self::LUNAR_PAYMENT_CODE != $methodName) {
+        if ( ! in_array($methodName, self::LUNAR_CREDITCARD_METHODS)) {
             return $this;
         }
+
+        $captureMode =  $this->scopeConfig->getValue('payment/' . $methodName . '/capture_mode', ScopeInterface::SCOPE_STORE);
+        $invoiceEmailMode =  $this->scopeConfig->getValue('payment/' . $methodName . '/invoice_email', ScopeInterface::SCOPE_STORE);
 
         if ("instant" == $captureMode) {
             if (!$order->getId()) {

@@ -11,7 +11,7 @@ class TransactionRefund extends AbstractTransaction
      * Process http request
      * @param string $transactionId
      * @param array $data
-     * @return Paylike response
+     * @return Paylike|Lunar response
      */
     protected function process($transactionid, array $data)
     {
