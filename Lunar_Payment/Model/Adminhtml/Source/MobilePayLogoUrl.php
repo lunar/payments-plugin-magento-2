@@ -20,11 +20,6 @@ class MobilePayLogoUrl extends Value
         $logoUrl = $this->getValue();
         $allowedExtensions = ['png', 'jpg', 'jpeg'];
 
-        /** Check if the new value is empty. Even if we validate in frontend */
-        if ( ! $logoUrl) {
-			return $this;
-        }
-
         try {
             $fileSpecs = getimagesize($logoUrl);
         } catch (\Exception $e) {

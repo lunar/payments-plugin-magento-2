@@ -19,11 +19,6 @@ class MobilePayConfigId extends Value
     {
         $configurationId = $this->getValue();
 
-        /** Check if test mode & test key is valid. */
-        if (! $configurationId) {
-            return $this;
-        }
-
         if (strlen($configurationId) != 32) {
             /** Mark the new value as invalid */
             $this->_dataSaveAllowed = false;

@@ -41,13 +41,25 @@ class MobilePayLogsActions extends Field
   }
 
   public function getExportButtonHtml() {
-    $button = $this->getLayout()->createBlock('Magento\Backend\Block\Widget\Button')->setData(['id' => self::VENDOR_NAME . '_logs_export_button', 'label' => __('Export logs')]);
+    $button = $this->getLayout()
+                ->createBlock('Magento\Backend\Block\Widget\Button')
+                ->setData(
+                    [
+                        'id' => self::VENDOR_NAME . '_logs_export_button', 'label' => __('Export logs')
+                    ]
+            );
 
     return $button->toHtml();
   }
 
   public function getDeleteButtonHtml() {
-    $button = $this->getLayout()->createBlock('Magento\Backend\Block\Widget\Button')->setData(['id' => self::VENDOR_NAME . '_logs_delete_button', 'label' => __('Delete logs')]);
+    $button = $this->getLayout()
+                ->createBlock('Magento\Backend\Block\Widget\Button')
+                ->setData(
+                    [
+                        'id' => self::VENDOR_NAME . '_logs_delete_button', 'label' => __('Delete logs')
+                    ]
+            );
 
     return $button->toHtml();
   }

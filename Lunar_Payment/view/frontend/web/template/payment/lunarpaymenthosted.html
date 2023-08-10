@@ -6,7 +6,7 @@
 				data-bind="attr: {'id': getCode()}, value: getCode(), checked: isChecked, click: selectPaymentMethod, visible: isRadioButtonVisible()"/>
 		<label data-bind="attr: {'for': getCode()}" class="label">
 			<span data-bind="text: getTitle()"></span>
-			<span class="mobilepay-logo" data-bind="html:getLogo()"></span>
+			<span class="card-logos" data-bind="html:getCardLogos()"></span>
 		</label>
 	</div>
 	<div class="payment-method-content lunar-pm-description">
@@ -28,17 +28,17 @@
 			<!-- ko template: getTemplate() --><!-- /ko -->
 			<!--/ko-->
 		</div>
-
+		
 		<!-- Where we display some messages -->
-		<div id="lunarmobilepay_messages"></div>
+		<div id="lunarpaymenthosted_messages"></div>
 
 		<div class="actions-toolbar">
 			<div class="primary">
 				<button class="action primary checkout"
-						id="lunarmobilepay-button"
+						id="lunarpaymenthosted-button"
 						type="submit"
 						data-bind="
-                        click: makePayment,
+                        click: redirectToPayment,
                         attr: {title: $t('Place Order')},
                         css: {disabled: !isPlaceOrderActionAllowed()},
                         enable: (getCode() == isChecked())

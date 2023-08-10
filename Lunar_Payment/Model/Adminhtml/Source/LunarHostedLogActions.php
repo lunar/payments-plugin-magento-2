@@ -5,10 +5,10 @@ use Magento\Config\Block\System\Config\Form\Field;
 use Magento\Backend\Block\Template\Context;
 use Magento\Framework\Data\Form\Element\AbstractElement;
 
-class LogsActions extends Field {
+class LunarHostedLogActions extends Field {
 
-  const VENDOR_NAME = 'lunar';
-  protected $_template = 'Lunar_Payment::system/config/LogsActions.phtml';
+  const VENDOR_NAME = 'lunarhosted';
+  protected $_template = 'Lunar_Payment::system/config/LunarHostedLogActions.phtml';
 
   public function __construct(Context $context, array $data = []) {
     parent::__construct($context, $data);

@@ -1,9 +1,3 @@
-/**
- * Copyright © 2015 Magento. All rights reserved.
- * See COPYING.txt for license details.
- */
-/*browser:true*/
-/*global define*/
 define(
     [
         'jquery',
@@ -28,43 +22,8 @@ define(
             defaults: {
                 template: 'Lunar_Payment/payment/paymentmethodtemplate',
                 transactionid: '',
-                lunarConfig: {}
-            },
-
-            /** @inheritdoc */
-            initialize: function () {
-                this._super();
-
-                this.lunarConfig = window.checkoutConfig.lunarpaymentmethod;
-
-                return this;
-            },
-
-            /** Returns send check to info */
-            getMailingAddress: function () {
-                return window.checkoutConfig.payment.checkmo.mailingAddress;
-            },
-
-            getDescription: function () {
-                return this.lunarConfig.description;
-            },
-
-            getCardLogos: function () {
-                var logosString = this.lunarConfig.cards;
-
-                if (!logosString) {
-                    return '';
-                }
-
-                var logos = logosString.split(',');
-                var imghtml = "";
-                if (logos.length > 0) {
-                    for (var i = 0; i < logos.length; i++) {
-                        imghtml = imghtml + "<img src='" + this.lunarConfig.url[i] + "' alt='" + logos[i] + "' width='45'>";
-                    }
-                }
-
-                return imghtml;
+                lunarConfig: window.checkoutConfig.lunarpaymentmethod,
+                logger: window.LunarLogger
             },
 
             displayPopup: function () {
@@ -93,15 +52,16 @@ define(
 
                 paymentConfig.custom.customer.phoneNo = Quote.billingAddress().telephone;
                 paymentConfig.custom.customer.address = Quote.billingAddress().street[0] + ", " + Quote.billingAddress().city + ", " + Quote.billingAddress().region + " " + Quote.billingAddress().postcode + ", " + Quote.billingAddress().countryId;
+                delete paymentConfig.paymentMethod;
 
-                LunarLogger.setContext(paymentConfig, Jquery, MageUrl);
+                self.logger.setContext(paymentConfig, Jquery, MageUrl);
 
-                LunarLogger.log("Opening payment popup");
+                self.logger.log("Opening payment popup");
 
                 sdkClient.pay(paymentConfig, function (err, res) {
                     if (err) {
                         if(err === "closed") {
-                            LunarLogger.log("Popup closed by user");
+                            self.logger.log("Popup closed by user");
                         }
                         /**
                          * (Need improvement/rethink the logic)
@@ -117,7 +77,7 @@ define(
 
                     if (res.transaction.id !== undefined && res.transaction.id !== "") {
                         self.transactionid = res.transaction.id;
-                        LunarLogger.log("Payment successfull. Transaction ID: " + res.transaction.id);
+                        self.logger.log("Payment successfull. Transaction ID: " + res.transaction.id);
                         /*
                           In order to intercept the error of placeOrder request we need to monkey-patch
                           the `addErrorMessage` function of the messageContainer:
@@ -126,7 +86,7 @@ define(
                         */
                         self.messageContainer.oldAddErrorMessage = self.messageContainer.addErrorMessage;
                         self.messageContainer.addErrorMessage = async function (messageObj) {
-                          await LunarLogger.log("Place order failed. Reason: " + messageObj.message);
+                          await self.logger.log("Place order failed. Reason: " + messageObj.message);
 
                           self.messageContainer.oldAddErrorMessage(messageObj);
                         }
@@ -138,7 +98,7 @@ define(
                         */
                         self.redirectAfterPlaceOrder = false;
                         self.afterPlaceOrder = async function (args) {
-                          await LunarLogger.log("Order placed successfully");
+                          await self.logger.log("Order placed successfully");
                           RedirectOnSuccessAction.execute();
                         }
 
@@ -147,11 +107,42 @@ define(
                     }
 
                     else {
-                        LunarLogger.log("No transaction id returned from gateway, order not placed");
+                        self.logger.log("No transaction id returned from gateway, order not placed");
 
                         return false;
                     }
                 });
+            },
+            
+            /** Returns send check to info */
+            getMailingAddress: function () {
+                return window.checkoutConfig.payment.checkmo.mailingAddress;
+            },
+
+            getDescription: function () {
+                return this.lunarConfig.description;
+            },
+
+            getCardLogos: function () {
+                var logosString = this.lunarConfig.cards;
+
+                if (!logosString) {
+                    return '';
+                }
+
+                var logos = logosString.split(',');
+                var imghtml = "";
+                if (logos.length > 0) {
+                    for (var i = 0; i < logos.length; i++) {
+                        imghtml = imghtml + "<img src='" + this.lunarConfig.url[i] + "' alt='" + logos[i] + "' width='45'>";
+                    }
+                }
+
+                return imghtml;
+            },
+
+            getTitle: function () {
+                return this.lunarConfig.methodTitle;
             },
 
             getData: function () {

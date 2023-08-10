@@ -1,15 +1,8 @@
-/**
- * Copyright © 2015 Magento. All rights reserved.
- * See COPYING.txt for license details.
- */
-/*browser:true*/
-/*global define*/
 define(
     [
         'jquery',
         'Magento_Checkout/js/view/payment/default',
         'Magento_Checkout/js/model/quote',
-        'Magento_Customer/js/model/customer',
         'Magento_Checkout/js/model/customer-email-validator',
         'Magento_Checkout/js/action/redirect-on-success',
         'mage/url'
@@ -18,7 +11,6 @@ define(
                 Jquery,
                 PaymentDefaultComponent,
                 Quote,
-                Customer,
                 CustomerEmailValidator,
                 RedirectOnSuccessAction,
                 MageUrl,
@@ -39,6 +31,7 @@ define(
                 beforeOrder: true,
 				paymentButtonSelector: '.action.primary.checkout',
                 redirectUrl: window.checkoutConfig.defaultSuccessPageUrl,
+                logger: window.LunarLogger
             },
 
             /** @inheritdoc */
@@ -54,15 +47,6 @@ define(
                 this.handleIframeMessage();
 
                 return this;
-            },
-
-            /** Returns send check to info */
-            getMailingAddress: function () {
-                return window.checkoutConfig.payment.checkmo.mailingAddress;
-            },
-
-            getDescription: function () {
-                return this.mobilePayConfig.description;
             },
 
             makePayment: function () {
@@ -89,9 +73,11 @@ define(
 
                 paymentConfig.custom.customer.phoneNo = Quote.billingAddress().telephone;
                 paymentConfig.custom.customer.address = Quote.billingAddress().street[0] + ", " + Quote.billingAddress().city + ", " + Quote.billingAddress().region + " " + Quote.billingAddress().postcode + ", " + Quote.billingAddress().countryId;
+                
+                delete paymentConfig.paymentMethod;
 
                 let isMobilePay = true;
-                LunarLogger.setContext(paymentConfig, Jquery, MageUrl, isMobilePay);
+                self.logger.setContext(paymentConfig, Jquery, MageUrl, isMobilePay);
 
 
                 /** AFTER order flow. */
@@ -115,7 +101,6 @@ define(
                                 quote_id: paymentConfig.custom.quoteId,
                             },
                             success: function(data) {
-                                /** Replace default success url with call to our controller */
                                 window.location.replace(MageUrl.build('lunar/index/MobilePayPayment/?order_id=' + data.order_id));
                             },
                             error: function(jqXHR, textStatus, errorThrown) {
@@ -125,20 +110,20 @@ define(
                     }
 
 
-                    LunarLogger.log("Payment mode: " + paymentConfig.checkoutMode);
+                    self.logger.log("Payment mode: " + paymentConfig.checkoutMode);
 
                     self.placeOrder();
 
                 }
                 /** BEFORE order flow. */
                 else {
-                    LunarLogger.log("Payment mode: " + paymentConfig.checkoutMode);
+                    self.logger.log("Payment mode: " + paymentConfig.checkoutMode);
 
                     this.initiatePaymentServerCall(paymentConfig, function(response) {
                             var $div = Jquery('#lunarmobilepay_messages');
 
                             if(response.error){
-                                LunarLogger.log("Error occured: " + response.error);
+                                self.logger.log("Error occured: " + response.error);
 
                                 self.submitError(response.error);
                                 return false;
@@ -146,7 +131,7 @@ define(
 
                             if (response.data.authorizationId !== undefined && response.data.authorizationId !== "") {
                                 self.transactionid = response.data.authorizationId;
-                                LunarLogger.log("Payment successfull. Authorization ID: " + response.data.authorizationId);
+                                self.logger.log("Payment successfull. Authorization ID: " + response.data.authorizationId);
                                 /*
                                  * In order to intercept the error of placeOrder request we need to monkey-patch
                                  * the `addErrorMessage` function of the messageContainer:
@@ -155,7 +140,7 @@ define(
                                  */
                                 self.messageContainer.oldAddErrorMessage = self.messageContainer.addErrorMessage;
                                 self.messageContainer.addErrorMessage = async function (messageObj) {
-                                    await LunarLogger.log("Place order failed. Reason: " + messageObj.message);
+                                    await self.logger.log("Place order failed. Reason: " + messageObj.message);
 
                                     self.messageContainer.oldAddErrorMessage(messageObj);
                                 }
@@ -167,7 +152,7 @@ define(
                                  */
                                 self.redirectAfterPlaceOrder = false;
                                 self.afterPlaceOrder = async function () {
-                                    await LunarLogger.log("Order placed successfully");
+                                    await self.logger.log("Order placed successfully");
                                     RedirectOnSuccessAction.execute();
                                 }
 
@@ -208,7 +193,7 @@ define(
                         success(data)
                     },
                     error: function(jqXHR, textStatus, errorThrown) {
-                        LunarLogger.log("Error occurred on server call: " + errorThrown);
+                        self.logger.log("Error occurred on server call: " + errorThrown);
 
                         self.submitError('<div class="lunarmobilepay-error">' + errorThrown + '</div>');
                     },
@@ -318,6 +303,15 @@ define(
 
             enablePaymentButton: function() {
                 Jquery(this.paymentButtonSelector).prop('disabled', false);
+            },
+
+            /** Returns send check to info */
+            getMailingAddress: function () {
+                return window.checkoutConfig.payment.checkmo.mailingAddress;
+            },
+
+            getDescription: function () {
+                return this.mobilePayConfig.description;
             },
 
             getTitle: function () {

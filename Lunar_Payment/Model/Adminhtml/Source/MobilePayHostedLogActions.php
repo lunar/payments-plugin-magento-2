@@ -1,14 +1,22 @@
 <?php
+/**
+ * Copyright © Magento, Inc. All rights reserved.
+ * See COPYING.txt for license details.
+ */
 namespace Lunar\Payment\Model\Adminhtml\Source;
 
 use Magento\Config\Block\System\Config\Form\Field;
 use Magento\Backend\Block\Template\Context;
 use Magento\Framework\Data\Form\Element\AbstractElement;
 
-class LogsActions extends Field {
+/**
+ * Class MobilePayHostedLogActions
+ */
+class MobilePayHostedLogActions extends Field
+{
 
-  const VENDOR_NAME = 'lunar';
-  protected $_template = 'Lunar_Payment::system/config/LogsActions.phtml';
+  const VENDOR_NAME = 'lunarmobilepayhosted';
+  protected $_template = 'Lunar_Payment::system/config/MobilePayHostedLogActions.phtml';
 
   public function __construct(Context $context, array $data = []) {
     parent::__construct($context, $data);
@@ -37,9 +45,9 @@ class LogsActions extends Field {
                 ->createBlock('Magento\Backend\Block\Widget\Button')
                 ->setData(
                     [
-                    'id' => self::VENDOR_NAME . '_logs_export_button', 'label' => __('Export logs')
+                        'id' => self::VENDOR_NAME . '_logs_export_button', 'label' => __('Export logs')
                     ]
-                );
+            );
 
     return $button->toHtml();
   }
@@ -48,9 +56,9 @@ class LogsActions extends Field {
     $button = $this->getLayout()
                 ->createBlock('Magento\Backend\Block\Widget\Button')
                 ->setData(
-                [
-                    'id' => self::VENDOR_NAME . '_logs_delete_button', 'label' => __('Delete logs')
-                ]
+                    [
+                        'id' => self::VENDOR_NAME . '_logs_delete_button', 'label' => __('Delete logs')
+                    ]
             );
 
     return $button->toHtml();

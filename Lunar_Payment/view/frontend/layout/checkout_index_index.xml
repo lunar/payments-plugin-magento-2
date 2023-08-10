@@ -1,15 +1,14 @@
 <?xml version="1.0"?>
-<!--
-/**
- * Copyright © 2016 Magento. All rights reserved.
- * See COPYING.txt for license details.
- */
--->
-<page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" layout="1column" xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
+
+<page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+        layout="1column" 
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
+
     <head>
         <css src="Lunar_Payment/css/lunar_payment.css" />
         <script src="https://sdk.paylike.io/a.js" src_type="url" />
         <link src="Lunar_Payment::js/logs.js"/>
+        <link src="Lunar_Payment::js/hostedlogs.js"/>    
     </head>
 
     <body>
@@ -29,6 +28,7 @@
                                                         <item name="renders" xsi:type="array">
                                                             <!-- merge payment method renders here -->
                                                             <item name="children" xsi:type="array">
+                                                                
                                                                 <item name="lunarpaymentmethod" xsi:type="array">
                                                                     <item name="component" xsi:type="string">Lunar_Payment/js/view/payment/lunarpaymentrenderer</item>
                                                                     <item name="methods" xsi:type="array">
@@ -40,6 +40,20 @@
                                                                         </item>
                                                                     </item>
                                                                 </item>
+                                                                
+                                                                <item name="lunarhosted" xsi:type="array">
+                                                                    <item name="component" xsi:type="string">Lunar_Payment/js/view/payment/hostedrenderer</item>
+                                                                    <item name="methods" xsi:type="array">
+                                                                        <!-- hosted methods -->
+                                                                        <item name="lunarpaymenthosted" xsi:type="array">
+                                                                            <item name="isBillingAddressRequired" xsi:type="boolean">true</item>
+                                                                        </item>
+                                                                        <item name="lunarmobilepayhosted" xsi:type="array">
+                                                                            <item name="isBillingAddressRequired" xsi:type="boolean">true</item>
+                                                                        </item>
+                                                                    </item>
+                                                                </item>
+
                                                             </item>
                                                         </item>
                                                     </item>

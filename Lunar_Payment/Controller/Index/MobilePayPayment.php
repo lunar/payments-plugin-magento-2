@@ -62,7 +62,6 @@ class MobilePayPayment implements ActionInterface
 
     private string $mobilePayCode = ConfigProvider::MOBILEPAY_CODE;
     private $hintsOrderKey = 'lunarmobilepay_hints';
-
     private Order $order;
     private bool $isInstantMode = false;
     private $orderId = null;
@@ -282,6 +281,8 @@ class MobilePayPayment implements ActionInterface
 
         $commentContentModified = str_replace('trxid_placeholder', $this->authorizationId, $orderHistory['comment'] ?? '');
 
+        
+        /** @var \Magento\Sales\Model\Order\Status\History $historyItem */
         $historyItem = $this->orderStatusRepository->get($orderHistory['entity_id']);
 
 
@@ -296,7 +297,13 @@ class MobilePayPayment implements ActionInterface
                 return;
             } else {
                 $baseGrandTotal = $this->order->getBaseGrandTotal();
-                $formattedPrice = $this->priceCurrencyInterface->format($baseGrandTotal, $includeContainer = false, $precision = 2, $scope = null, $currency = 'USD');
+                $formattedPrice = $this->priceCurrencyInterface->format(
+                    $baseGrandTotal, 
+                    $includeContainer = false, 
+                    $precision = 2, 
+                    $scope = null,
+                    $currency = $this->order->getBaseCurrencyCode()
+                );
 
                 /** The price will be displayed in base currency. */
                 $commentContentModified = 'Authorized amount of ' . $formattedPrice . '. Transaction ID: "' . $this->authorizationId . '".';
@@ -435,7 +442,7 @@ class MobilePayPayment implements ActionInterface
             return $this->error($response['message']);
         }
 
-        if ( ! isset($response['hints'])) {
+        if ( ! isset($response['hints']) && isset($data['notBefore']) ) {
             $notBefore = \DateTime::createFromFormat('Y-m-d\TH:i:s+', $response['notBefore']);
 			$now = new \DateTime();
 			$timeDiff = ($notBefore->getTimestamp() - $now->getTimestamp()) + 1; // add 1 second to account for miliseconds loss
@@ -504,7 +511,9 @@ class MobilePayPayment implements ActionInterface
         unset(
             $this->args['title'],
             $this->args['locale'],
-            $this->args['checkoutMode']
+            $this->args['checkoutMode'],
+            $this->args['paymentMethod'],
+            $this->args['amount']['decimal']
         );
 
         $response = $this->makeCurlRequest(

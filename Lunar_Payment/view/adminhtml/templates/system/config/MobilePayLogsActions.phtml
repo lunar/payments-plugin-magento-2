@@ -5,7 +5,7 @@
     justify-content: space-between;
   }
 
-  #lunarmobilepay_logs_logs_message {
+  #lunarmobilepay_logs_message {
     margin-top: 8px;
   }
 </style>
@@ -13,26 +13,14 @@
   <button id="lunarmobilepay_logs_export_button" disabled>Export logs</button>
   <button id="lunarmobilepay_logs_delete_button" disabled>Delete logs</button>
 </div>
-<p id="lunarmobilepay_logs_logs_message">this is a message</p>
+<p id="lunarmobilepay_logs_message">this is a message</p>
 
 
 <script type="text/javascript">
-  /**
-   * Show/hide specific fields based on query parameter
-   */
-  if (
-    "?debug" !== document.location.search
-    && 'test' !== jQuery(`#row_payment_us_lunarmobilepay_transaction_mode option:selected`).val()
-    ) {
-      jQuery(`#row_payment_us_lunarmobilepay_transaction_mode`).hide();
-      jQuery(`#row_payment_us_lunarmobilepay_test_app_key`).hide();
-      jQuery(`#row_payment_us_lunarmobilepay_test_public_key`).hide();
-  }
-
 
   let mobilepayExportLogsButton = jQuery(`#lunarmobilepay_logs_export_button`);
   let mobilepayDeleteLogsButton = jQuery(`#lunarmobilepay_logs_delete_button`);
-  let mobilepayLogsMessage = jQuery(`#lunarmobilepay_logs_logs_message`);
+  let mobilepayLogsMessage = jQuery(`#lunarmobilepay_logs_message`);
   let mobilepayLogsEnabledSelector = jQuery(`#payment_us_lunarmobilepay_enable_logs`);
 
   function download(filename, content) {

@@ -1,20 +1,44 @@
 <?xml version="1.0"?>
-<!--
-/**
- * Copyright © 2016 Magento. All rights reserved.
- * See COPYING.txt for license details.
- */
--->
+
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
     <system>
         <section id="payment">
+
             <group id="lunarpaymentmethod" translate="label" type="text" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1">
                 <label>Lunar</label>
+                <comment>
+                    <![CDATA[
+                        <script type="text/javascript">
+                            /**
+                             *   Show/hide test fields based on query parameter
+                             */
+                            jQuery(document).ready(() => {
+                                if ("?debug" !== document.location.search) {
+                                    if ('test' !== jQuery(`#row_payment_us_lunarpaymentmethod_transaction_mode option:selected`).val()) {
+                                        jQuery(`#row_payment_us_lunarpaymentmethod_transaction_mode`).hide();
+                                    }
+
+                                    if ('test' !== jQuery(`#row_payment_us_lunarmobilepay_transaction_mode option:selected`).val()) {
+                                        jQuery(`#row_payment_us_lunarmobilepay_transaction_mode`).hide();
+                                    }
+
+                                    if ('test' !== jQuery(`#row_payment_us_lunarpaymenthosted_transaction_mode option:selected`).val()) {
+                                        jQuery(`#row_payment_us_lunarpaymenthosted_transaction_mode`).hide();
+                                    }
+
+                                    if ('test' !== jQuery(`#row_payment_us_lunarmobilepayhosted_transaction_mode option:selected`).val()) {
+                                        jQuery(`#row_payment_us_lunarmobilepayhosted_transaction_mode`).hide();
+                                    }
+                                }
+                            })
+                        </script>
+                    ]]>
+                </comment>
 
                 <field id="active" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Enable Lunar</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
-                    <frontend_class>lunar-version version-1.4.0</frontend_class>
+                    <frontend_class>lunar-version version-2.0.0</frontend_class>
                 </field>
 
                 <field id="title" translate="label" type="text" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
@@ -46,12 +70,18 @@
                     <label>Test mode App Key</label>
                     <comment>Get it from your Lunar dashboard</comment>
                     <backend_model>Lunar\Payment\Model\Adminhtml\Source\TestAppKey</backend_model>
+                    <depends>
+                        <field id="transaction_mode">test</field>
+                    </depends>
                 </field>
 
                 <field id="test_public_key" translate="label comment" type="text" sortOrder="80" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Test mode Public Key</label>
                     <comment>Get it from your Lunar dashboard</comment>
                     <backend_model>Lunar\Payment\Model\Adminhtml\Source\TestPublicKey</backend_model>
+                    <depends>
+                        <field id="transaction_mode">test</field>
+                    </depends>
                 </field>
 
                 <field id="live_app_key" translate="label comment" type="text" sortOrder="90" showInDefault="1" showInWebsite="1" showInStore="1">
@@ -106,9 +136,9 @@
                 </field>
             </group>
 
-<!-- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -->
-<!-- +++++++++++++++++++++++++++++++++++++++++++++ LUNAR MOBILE PAY CONFIG FIELDS ++++++++++++++++++++++++++++++++++++++++++++++++ -->
-<!-- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -->
+            <!-- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -->
+            <!-- +++++++++++++++++++++++++++++++++++++++++++++ LUNAR MOBILE PAY CONFIG FIELDS ++++++++++++++++++++++++++++++++++++++++++++++++ -->
+            <!-- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -->
 
             <group id="lunarmobilepay" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
                 <label>Lunar MobilePay</label>
@@ -136,12 +166,18 @@
                     <label>Test mode App Key</label>
                     <comment>Get it from your Lunar dashboard</comment>
                     <backend_model>Lunar\Payment\Model\Adminhtml\Source\TestAppKey</backend_model>
+                    <depends>
+                        <field id="transaction_mode">test</field>
+                    </depends>
                 </field>
 
                 <field id="test_public_key" translate="label comment" type="text" sortOrder="70" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Test mode Public Key</label>
                     <comment>Get it from your Lunar dashboard</comment>
                     <backend_model>Lunar\Payment\Model\Adminhtml\Source\TestPublicKey</backend_model>
+                    <depends>
+                        <field id="transaction_mode">test</field>
+                    </depends>
                 </field>
 
                 <field id="live_app_key" translate="label comment" type="text" sortOrder="80" showInDefault="1" showInWebsite="1" showInStore="1">
@@ -160,6 +196,10 @@
                     <label>MobilePay Configuration ID</label>
                     <comment>Email onlinepayments@lunar.app to get it</comment>
                     <backend_model>Lunar\Payment\Model\Adminhtml\Source\MobilePayConfigId</backend_model>
+                    <validate>required-entry</validate>
+                    <depends>
+                        <field id="active">1</field>
+                    </depends>
                 </field>
 
                 <field id="capture_mode" translate="label comment" type="select" sortOrder="110" showInDefault="1" showInWebsite="1" showInStore="1">
@@ -172,6 +212,10 @@
                     <label>Logo URL</label>
                     <comment>URL must start with "https://", and the image must have PNG, JPG, JPEG extension.</comment>
                     <backend_model>Lunar\Payment\Model\Adminhtml\Source\MobilePayLogoUrl</backend_model>
+                    <validate>required-entry</validate>
+                    <depends>
+                        <field id="active">1</field>
+                    </depends>
                 </field>
 
                 <field id="checkout_mode" translate="label comment" type="select" sortOrder="130" showInDefault="1" showInWebsite="1" showInStore="1">
@@ -208,6 +252,252 @@
                 </field>
 
             </group>
+
+
+
+
+
+
+
+
+<!-- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -->
+<!-- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -->
+<!-- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -->
+<!-- +++++++++++++++++++++++++++++++++++++++++++++ LUNAR HOSTED CHECKOUT FIELDS ++++++++++++++++++++++++++++++++++++++++++++++++++ -->
+<!-- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -->
+
+            <group id="lunarpaymenthosted" translate="label" type="text" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Lunar (Beta)</label>
+
+                <field id="active" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Enable Lunar (Beta)</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <frontend_class>lunarhosted-version version-2.0.0</frontend_class>
+                </field>
+
+                <field id="title" translate="label" type="text" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Payment method title</label>
+                </field>
+
+                <field id="acceptedcards" translate="label" type="multiselect" sortOrder="30" showInDefault="1"
+                       showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Payment method credit card logos</label>
+                    <source_model>Lunar\Payment\Model\Adminhtml\Source\AcceptedCards</source_model>
+                </field>
+
+                <field id="description" translate="label" type="textarea" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Payment method description</label>
+                </field>
+
+                <field id="popup_title" translate="label comment" type="text" sortOrder="50" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Payment popup title</label>
+                    <comment>The text shown in the popup where the customer inserts the card details</comment>
+                </field>
+
+                <field id="transaction_mode" translate="label comment" type="select" sortOrder="60" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Transaction mode</label>
+                    <source_model>Lunar\Payment\Model\Adminhtml\Source\TransactionMode</source_model>
+                    <comment>In test mode, you can create a successful transaction with the card number 4100 0000 0000 0000 with any CVC and a valid expiration date.</comment>
+                </field>
+
+                <field id="test_app_key" translate="label comment" type="text" sortOrder="70" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Test mode App Key</label>
+                    <comment>Get it from your Lunar dashboard</comment>
+                    <backend_model>Lunar\Payment\Model\Adminhtml\Source\TestAppKey</backend_model>
+                    <depends>
+                        <field id="transaction_mode">test</field>
+                    </depends>
+                </field>
+
+                <field id="test_public_key" translate="label comment" type="text" sortOrder="80" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Test mode Public Key</label>
+                    <comment>Get it from your Lunar dashboard</comment>
+                    <backend_model>Lunar\Payment\Model\Adminhtml\Source\TestPublicKey</backend_model>
+                    <depends>
+                        <field id="transaction_mode">test</field>
+                    </depends>
+                </field>
+
+                <field id="live_app_key" translate="label comment" type="text" sortOrder="90" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>App Key</label>
+                    <comment>Get it from your Lunar dashboard</comment>
+                    <backend_model>Lunar\Payment\Model\Adminhtml\Source\LiveAppKey</backend_model>
+                </field>
+
+                <field id="live_public_key" translate="label comment" type="text" sortOrder="100" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Public Key</label>
+                    <comment>Get it from your Lunar dashboard</comment>
+                    <backend_model>Lunar\Payment\Model\Adminhtml\Source\LivePublicKey</backend_model>
+                </field>
+
+                <field id="capture_mode" translate="label comment" type="select" sortOrder="110" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Capture mode</label>
+                    <source_model>Lunar\Payment\Model\Adminhtml\Source\CaptureMode</source_model>
+                    <comment>If you deliver your product instantly (e.g. a digital product), choose Instant mode. If not, use Delayed. The capture in delayed mode is done when an invoice is created.</comment>
+                </field>
+
+                <field id="logo_url" translate="label comment" type="text" sortOrder="120" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Logo URL</label>
+                    <comment>URL must start with "https://", and the image must have PNG, JPG, JPEG extension.</comment>
+                    <backend_model>Lunar\Payment\Model\Adminhtml\Source\LogoUrl</backend_model>
+                    <validate>required-entry</validate>
+                    <depends>
+                        <field id="active">1</field>
+                    </depends>
+                </field>
+
+                <field id="invoice_email" translate="label" type="select" sortOrder="120" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Enable Invoice emails</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>In Instant mode, orders are invoiced automatically. Set this option to yes if you want to send the invoice email to the customers</comment>
+                </field>
+
+                <!-- <field id="checkout_mode" translate="label comment" type="select" sortOrder="130" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Checkout mode</label>
+                    <source_model>Lunar\Payment\Model\Adminhtml\Source\CheckoutMode</source_model>
+                    <comment>The possibility to pay before or after creating the order</comment>
+                </field> -->
+
+                <field id="order_status" translate="label" type="select" sortOrder="140" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>New Order Status</label>
+                    <source_model>Magento\Sales\Model\Config\Source\Order\Status\Processing</source_model>
+                </field>
+
+
+                <field id="sort_order" translate="label" type="text" sortOrder="150" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Sort Order</label>
+                    <frontend_class>validate-number</frontend_class>
+                </field>
+
+                <field id="enable_logs" sortOrder="160" translate="label" type="select" showInDefault="1" showInWebsite="1" showInStore="1">
+                  <label>Enable logs</label>
+                  <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+
+                <field id="logs_actions" translate="label" type="button" sortOrder="170" showInDefault="1" showInWebsite="1" showInStore="1">
+                  <label>Logs actions</label>
+                  <frontend_model>Lunar\Payment\Model\Adminhtml\Source\LunarHostedLogActions</frontend_model>
+                </field>
+            </group>
+
+            <!-- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -->
+            <!-- +++++++++++++++++++++++++++++++++++++++++++  MOBILE PAY HOSTED CONFIG FIELDS ++++++++++++++++++++++++++++++++++++++++++++++++ -->
+            <!-- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -->
+
+            <group id="lunarmobilepayhosted" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Lunar MobilePay (Beta)</label>
+
+                <field id="active" translate="label" type="select" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Enable Lunar MobilePay (Beta)</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+
+                <field id="title" translate="label" type="text" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Payment method title</label>
+                </field>
+
+                <field id="description" translate="label" type="textarea" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Payment method description</label>
+                </field>
+
+                <field id="transaction_mode" translate="label comment" type="select" sortOrder="50" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Transaction mode</label>
+                    <source_model>Lunar\Payment\Model\Adminhtml\Source\TransactionMode</source_model>
+                    <comment>In test mode, you can create a successful transaction with the card number 4100 0000 0000 0000 with any CVC and a valid expiration date.</comment>
+                </field>
+
+                <field id="test_app_key" translate="label comment" type="text" sortOrder="60" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Test mode App Key</label>
+                    <comment>Get it from your Lunar dashboard</comment>
+                    <!-- <backend_model>Lunar\Payment\Model\Adminhtml\Source\TestAppKey</backend_model> -->
+                    <depends>
+                        <field id="transaction_mode">test</field>
+                    </depends>
+                </field>
+
+                <field id="test_public_key" translate="label comment" type="text" sortOrder="70" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Test mode Public Key</label>
+                    <comment>Get it from your Lunar dashboard</comment>
+                    <!-- <backend_model>Lunar\Payment\Model\Adminhtml\Source\TestPublicKey</backend_model> -->
+                    <depends>
+                        <field id="transaction_mode">test</field>
+                    </depends>
+                </field>
+
+                <field id="live_app_key" translate="label comment" type="text" sortOrder="80" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>App Key</label>
+                    <comment>Get it from your Lunar dashboard</comment>
+                    <!-- <backend_model>Lunar\Payment\Model\Adminhtml\Source\LiveAppKey</backend_model> -->
+                </field>
+
+                <field id="live_public_key" translate="label comment" type="text" sortOrder="90" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Public Key</label>
+                    <comment>Get it from your Lunar dashboard</comment>
+                    <!-- <backend_model>Lunar\Payment\Model\Adminhtml\Source\LivePublicKey</backend_model> -->
+                </field>
+
+                <field id="configuration_id" translate="label comment" type="text" sortOrder="100" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>MobilePay Configuration ID</label>
+                    <comment>Email onlinepayments@lunar.app to get it</comment>
+                    <backend_model>Lunar\Payment\Model\Adminhtml\Source\MobilePayConfigId</backend_model>
+                    <validate>required-entry</validate>
+                    <depends>
+                        <field id="active">1</field>
+                    </depends>
+                </field>
+
+                <field id="capture_mode" translate="label comment" type="select" sortOrder="110" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Capture mode</label>
+                    <source_model>Lunar\Payment\Model\Adminhtml\Source\CaptureMode</source_model>
+                    <comment>If you deliver your product instantly (e.g. a digital product), choose Instant mode. If not, use Delayed. The capture in delayed mode is done when an invoice is created.</comment>
+                </field>
+
+                <field id="logo_url" translate="label comment" type="text" sortOrder="120" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Logo URL</label>
+                    <comment>URL must start with "https://", and the image must have PNG, JPG, JPEG extension.</comment>
+                    <backend_model>Lunar\Payment\Model\Adminhtml\Source\LogoUrl</backend_model>
+                    <validate>required-entry</validate>
+                    <depends>
+                        <field id="active">1</field>
+                    </depends>
+                </field>
+
+                <!-- <field id="checkout_mode" translate="label comment" type="select" sortOrder="130" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Checkout mode</label>
+                    <comment>The possibility to pay before or after creating the order</comment>
+                    <source_model>Lunar\Payment\Model\Adminhtml\Source\CheckoutMode</source_model>
+                    <backend_model>Lunar\Payment\Model\Adminhtml\MobilepayConfigPaymentAction</backend_model>
+                </field> -->
+
+                <field id="invoice_email" translate="label" type="select" sortOrder="140" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Enable Invoice emails</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>In Instant mode, orders are invoiced automatically. Set this option to yes if you want to send the invoice email to the customers</comment>
+                </field>
+
+                <field id="order_status" translate="label" type="select" sortOrder="150" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>New Order Status</label>
+                    <source_model>Magento\Sales\Model\Config\Source\Order\Status\Processing</source_model>
+                </field>
+
+                <field id="sort_order" translate="label" type="text" sortOrder="160" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Sort Order</label>
+                    <frontend_class>validate-number</frontend_class>
+                </field>
+
+                <field id="enable_logs" translate="label" type="select" sortOrder="170" showInDefault="1" showInWebsite="1" showInStore="1">
+                  <label>Enable logs</label>
+                  <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+
+                <field id="logs_actions" translate="label" type="button" sortOrder="180" showInDefault="1" showInWebsite="1" showInStore="1">
+                  <label>Logs actions</label>
+                  <frontend_model>Lunar\Payment\Model\Adminhtml\Source\MobilePayHostedLogActions</frontend_model>
+                </field>
+
+            </group>
+
+
 
         </section>
     </system>
