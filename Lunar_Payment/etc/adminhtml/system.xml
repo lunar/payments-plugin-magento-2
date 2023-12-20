@@ -4,6 +4,8 @@
     <system>
         <section id="payment">
 
+            <frontend_model>Lunar\Payment\Block\RemoveMethod</frontend_model>
+
             <group id="lunarpaymentmethod" translate="label" type="text" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1">
                 <label>Lunar</label>
                 <comment>
@@ -38,7 +40,6 @@
                 <field id="active" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Enable Lunar</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
-                    <frontend_class>lunar-version version-2.0.0</frontend_class>
                 </field>
 
                 <field id="title" translate="label" type="text" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
@@ -272,7 +273,6 @@
                 <field id="active" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Enable Lunar (Beta)</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
-                    <frontend_class>lunarhosted-version version-2.0.0</frontend_class>
                 </field>
 
                 <field id="title" translate="label" type="text" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
