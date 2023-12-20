@@ -21,8 +21,6 @@ use Lunar\Payment\Gateway\Http\Client\TransactionAuthorize;
  */
 class ConfigProvider implements ConfigProviderInterface
 {
-	const PLUGIN_VERSION = '2.0.0';
-
 	const LUNAR_PAYMENT_CODE = 'lunarpaymentmethod';
 	const MOBILEPAY_CODE = 'lunarmobilepay';
 
@@ -322,7 +320,7 @@ class ConfigProvider implements ConfigProviderInterface
 					'name'    => 'Magento',
 					'version' => $magentoVersion
 				],
-				'lunarPluginVersion' => self::PLUGIN_VERSION,
+				'lunarPluginVersion' => @json_decode(file_get_contents(dirname(__DIR__, 2) . '/composer.json'))->version,
 			],
 			'paymentMethod'  => $this->paymentMethodCode,
 		];
