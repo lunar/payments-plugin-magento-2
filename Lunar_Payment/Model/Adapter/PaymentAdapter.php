@@ -56,7 +56,8 @@ class PaymentAdapter
 
         $privateKey = "test" == $transactionMode
                         ? $this->getStoreConfigValue('test_app_key')
-                        : $this->getStoreConfigValue('live_app_key');
+                        : ($this->getStoreConfigValue('live_app_key')
+                        ?? $this->getStoreConfigValue('app_key'));
 
         Client::setKey($privateKey, $this->paymentMethodCode);
     }

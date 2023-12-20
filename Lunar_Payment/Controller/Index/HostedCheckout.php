@@ -25,6 +25,7 @@ use Magento\Sales\Model\Service\InvoiceService;
 use Magento\Sales\Model\Order\Email\Sender\InvoiceSender;
 use Magento\Sales\Model\Order\Invoice;
 use Magento\Framework\Pricing\PriceCurrencyInterface;
+use Magento\Framework\Stdlib\CookieManagerInterface;
 
 use Lunar\Payment\Model\Ui\ConfigProvider;
 use Lunar\Payment\Model\Adminhtml\Source\CaptureMode;
@@ -50,6 +51,7 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
     private $transactionFactory;
     private $invoiceSender;
     private $priceCurrencyInterface;
+    private $cookieManager;
 
     const REMOTE_URL = 'https://pay.lunar.money/?id=';
     const TEST_REMOTE_URL = 'https://hosted-checkout-git-develop-lunar-app.vercel.app/?id=';
@@ -89,7 +91,8 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
         InvoiceService $invoiceService,
         TransactionFactory $transactionFactory,
         InvoiceSender $invoiceSender,
-        PriceCurrencyInterface $priceCurrencyInterface
+        PriceCurrencyInterface $priceCurrencyInterface,
+        CookieManagerInterface $cookieManager
     ) {
         
         $this->storeManager           = $storeManager;
@@ -107,6 +110,7 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
         $this->transactionFactory = $transactionFactory;
         $this->invoiceSender = $invoiceSender;
         $this->priceCurrencyInterface = $priceCurrencyInterface;
+        $this->cookieManager = $cookieManager;
 
         /**
          * If request has order_id, the request is from a redirect
@@ -133,17 +137,13 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
         $this->isInstantMode = (CaptureMode::MODE_INSTANT == $this->getStoreConfigValue('capture_mode'));
 
 
-        $this->testMode = 'test' == $this->getStoreConfigValue('transaction_mode');
-        if ($this->testMode) {
-            $this->publicKey =  $this->getStoreConfigValue('test_public_key');
-            $privateKey =  $this->getStoreConfigValue('test_app_key');
-        } else {
-            $this->publicKey = $this->getStoreConfigValue('live_public_key');
-            $privateKey = $this->getStoreConfigValue('live_app_key');
-        }
+        $this->testMode = !!$this->cookieManager->getCookie('lunar_testmode');
+
+        $this->publicKey =  $this->getStoreConfigValue('public_key');
+        $privateKey =  $this->getStoreConfigValue('app_key');
 
         /** API Client instance */
-        $this->lunarApiClient = new Lunar($privateKey);
+        $this->lunarApiClient = new Lunar($privateKey, null, $this->testMode);
     }
 
 
@@ -172,7 +172,7 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
                 $errorMessage = 'An error occured creating payment for order. Please try again or contact system administrator.'; // <a href="/">Go to homepage</a>'
                 return $this->sendJsonResponse(['error' => $errorMessage], 400);
             }
-    
+  
             $this->savePaymentIntentOnOrder();
     
             $redirectUrl = self::REMOTE_URL . $this->paymentIntentId;
@@ -242,7 +242,7 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
 
         $this->args['integration'] = [
             'key' => $this->publicKey,
-            'name' => $this->storeManager->getStore()->getName(),
+            'name' => $this->getStoreConfigValue('store_title') ?? $this->storeManager->getStore()->getName(),
             'logo' =>  $this->getStoreConfigValue('logo_url'),
         ];
 

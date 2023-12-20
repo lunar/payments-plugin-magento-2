@@ -41,7 +41,12 @@ if (!class_exists('Lunar\\LunarHostedApiAdapter')) {
          */
         public function request($url, $data = null)
         {
-            $lunarApiClient = new Lunar($this->apiKey);
+            $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
+            $cookieManager = $objectManager->get('\Magento\Framework\Stdlib\CookieManagerInterface');
+
+            $testMode = !!$cookieManager->getCookie('lunar_testmode');
+
+            $lunarApiClient = new Lunar($this->apiKey, null, $testMode);
 
             $data = $data['lunarHosted']; // set in AbstractTransation class
 
