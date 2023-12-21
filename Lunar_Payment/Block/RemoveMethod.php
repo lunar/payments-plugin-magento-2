@@ -25,7 +25,9 @@ class RemoveMethod extends \Magento\Config\Block\System\Config\Form
         $methodCode = $group->getId();
 		if ($methodCode === 'lunarpaymentmethod' || $methodCode === 'lunarmobilepay') {
 			$active = $this->getConfigValue('payment/' . $methodCode . '/active');
-			$appKey = $this->getConfigValue('payment/' . $methodCode . '/live_app_key');
+			$appKey = $this->getConfigValue('payment/' . $methodCode . '/live_app_key')
+                        ?? $this->getConfigValue('payment/' . $methodCode . '/test_app_key')
+                        ?? $this->getConfigValue('payment/' . $methodCode . '/app_key');
 
 			if (!$active && !$appKey) {
 				return;
