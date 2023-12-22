@@ -12,7 +12,6 @@ define(
             defaults: {
                 template: 'Lunar_Payment/payment/lunarmobilepayhosted',
                 checkoutConfig: window.checkoutConfig.lunarmobilepayhosted,
-                beforeOrder: 'before_order' === window.checkoutConfig.lunarmobilepayhosted.checkoutMode,
             },
         });
     }
