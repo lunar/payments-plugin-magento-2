@@ -7,10 +7,7 @@ $lunarPaymentMethod = $block->getSelectedMethodCode();
 /**
  * Insert component script code to page if payment method match
  */
-if (
-    'lunarpaymentmethod' === $lunarPaymentMethod
-    || 'lunarmobilepay' === $lunarPaymentMethod
-    ) {
+if ('lunarpaymentmethod' === $lunarPaymentMethod) {
 
     /** Set checkout data as window variables. */
     echo '<script type="text/javascript">window.checkoutConfig = ' . $lunarCheckoutConfig . '</script>';
@@ -18,6 +15,11 @@ if (
 
     /** Insert multishipping component */
     echo '<script src="' . $block->getViewFileUrl('Lunar_Payment::js/view/payment/lunarpaymentmethod/multishipping.js') . '"></script>';
+}
+
+/** HOSTED CHECKOUT */
+if ('lunarpaymenthosted' === $lunarPaymentMethod || 'lunarmobilepayhosted' === $lunarPaymentMethod) {
+    echo '<script src="' . $block->getViewFileUrl('Lunar_Payment::js/view/payment/hostedcheckout/multishipping.js') . '"></script>';
 }
 
 ?>

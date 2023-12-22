@@ -1,8 +1,5 @@
 <?php
-/**
- * Copyright © 2016 Magento. All rights reserved.
- * See COPYING.txt for license details.
- */
+
 namespace Lunar\Payment\Observer;
 
 use Magento\Framework\Event\ObserverInterface;
@@ -16,12 +13,6 @@ use Lunar\Payment\Model\Ui\ConfigProvider;
  */
 class HostedCheckoutAllSubmitAfterObserver implements ObserverInterface
 {
-
-    const LUNAR_HOSTED_METHODS = [ 
-        ConfigProvider::LUNAR_PAYMENT_HOSTED_CODE,
-        ConfigProvider::MOBILEPAY_HOSTED_CODE,
-    ];
-
     /**
      *
      * @param Observer $observer
@@ -29,14 +20,10 @@ class HostedCheckoutAllSubmitAfterObserver implements ObserverInterface
      */
     public function execute(Observer $observer)
     {
-        /** Check for "order" - normal checkout flow. */
-        $order = $observer->getEvent()->getOrder();
         /** Check for "orders" - multishipping checkout flow. */
         $orders = $observer->getEvent()->getOrders();
 
-        if (!empty($order)) {
-            $this->processOrder($order);
-        } elseif (!empty($orders)) {
+        if (!empty($orders)) {
             foreach ($orders as $order) {
                 $this->processOrder($order);
             }
@@ -53,12 +40,11 @@ class HostedCheckoutAllSubmitAfterObserver implements ObserverInterface
         $payment = $order->getPayment();
         $methodName = $payment->getMethod();
 
-        if ( ! in_array($methodName, self::LUNAR_HOSTED_METHODS)) {
-            return $this;
+        if ( ! in_array($methodName, ConfigProvider::LUNAR_HOSTED_METHODS)) {
+            return;
         }
 
         $order->setState(Order::STATE_NEW)->setStatus('pending');
         $order->save();
-        return $this;
     }
 }

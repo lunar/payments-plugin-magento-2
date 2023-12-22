@@ -27,6 +27,11 @@ class ConfigProvider implements ConfigProviderInterface
 	const LUNAR_PAYMENT_HOSTED_CODE = 'lunarpaymenthosted';
 	const MOBILEPAY_HOSTED_CODE = 'lunarmobilepayhosted';
 
+	const LUNAR_HOSTED_METHODS = [ 
+        self::LUNAR_PAYMENT_HOSTED_CODE,
+        self::MOBILEPAY_HOSTED_CODE,
+    ];
+
 	private $scopeConfig;
 	private $_cart;
 	private $_assetRepo;
