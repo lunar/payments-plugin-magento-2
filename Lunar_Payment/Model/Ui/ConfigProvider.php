@@ -40,6 +40,7 @@ class ConfigProvider implements ConfigProviderInterface
 	private $locale;
 	private $cards;
 	private $helper;
+	private $isQuote;
 
 	private $paymentMethods = [];
 
@@ -73,9 +74,10 @@ class ConfigProvider implements ConfigProviderInterface
 	/**
 	 *
 	 */
-	public function setOrder($order)
+	public function setOrder($order, $isQuote = false)
 	{
 		$this->order = $order;
+		$this->isQuote = $isQuote;
 		return $this;
 	}
 
@@ -144,7 +146,9 @@ class ConfigProvider implements ConfigProviderInterface
 	 * Get quote object associated with cart. By default it is current customer session quote
 	 */
 	private function _getQuote() {
-		if ($this->order) {
+		if ($this->order && $this->isQuote) {
+			return $this->cartRepositoryInterface->get($this->order->getId());
+		} else if ($this->order) {
 			return $this->cartRepositoryInterface->get($this->order->getQuoteId());
 		}
 
