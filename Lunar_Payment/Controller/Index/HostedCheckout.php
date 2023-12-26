@@ -307,14 +307,15 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
             ];
         }
 
-        if (!$this->isMultishipping) {
+        if ($this->isMultishipping) {
+            $this->args['redirectUrl'] = $this->baseURL . $this->controllerURL . '?multishipping_quote_id=' . $this->order->getId();
+        } else {
             unset($this->args['custom']['quoteId']);
             /** Set order increment id to have the same number as in magento admin */
             $this->args['custom'] = array_merge(['orderId' => $this->order->getIncrementId()], $this->args['custom']);
             $this->args['redirectUrl'] = $this->baseURL . $this->controllerURL . '?order_id=' . $this->order->getId();
         }
         
-        $this->args['redirectUrl'] = $this->baseURL . $this->controllerURL . '?multishipping_quote_id=' . $this->order->getId();
         $this->args['preferredPaymentMethod'] = $this->paymentMethodCode == ConfigProvider::MOBILEPAY_HOSTED_CODE ? 'mobilePay' : 'card';
 
         /** 
@@ -506,6 +507,10 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
      */
     private function sendJsonResponse($response, $code = 200)
     {
+        if ($this->isMultishipping) {
+            return $this->redirectToErrorPage($response);
+        }
+
         return $this->jsonFactory->create()->setHttpResponseCode($code)->setData($response);
     }
 
