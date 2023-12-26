@@ -54,10 +54,16 @@ class PaymentAdapter
     {
         $transactionMode = $this->getStoreConfigValue('transaction_mode');
 
-        $privateKey = "test" == $transactionMode
-                        ? $this->getStoreConfigValue('test_app_key')
-                        : ($this->getStoreConfigValue('live_app_key')
-                        ?? $this->getStoreConfigValue('app_key'));
+        /** 
+         * @TODO get only app_key after complete hosted checkout migration
+         */
+        if ($this->getStoreConfigValue('app_key')) {
+            $privateKey = $this->getStoreConfigValue('app_key');
+        } else {
+            $privateKey = "test" == $transactionMode
+                            ? $this->getStoreConfigValue('test_app_key')
+                            : $this->getStoreConfigValue('live_app_key');
+        }
 
         Client::setKey($privateKey, $this->paymentMethodCode);
     }
@@ -148,10 +154,19 @@ class PaymentAdapter
 	 */
 	private function getPaymentMethodFromQuote()
 	{
-		$objectManager = \Magento\Framework\App\ObjectManager::getInstance();
-		$cart = $objectManager->get('\Magento\Checkout\Model\Cart');
+        $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
 
-		return $cart->getQuote()->getPayment()->getMethod();
+        if ($quoteId = $this->request->getParam('multishipping_quote_id')) {
+            /** @var \Magento\Quote\Api\CartRepositoryInterface $cartRepo */
+            $cartRepo = $objectManager->get('\Magento\Quote\Api\CartRepositoryInterface');
+            /** @var \Magento\Quote\Model\Quote $quote */
+            $quote = $cartRepo->get($quoteId);
+
+            return $quote->getPayment()->getMethod();
+        }
+	
+        $cart = $objectManager->get('\Magento\Checkout\Model\Cart');		
+        return $cart->getQuote()->getPayment()->getMethod();
 	}
 
 }
