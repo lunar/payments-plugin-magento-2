@@ -47,11 +47,12 @@ class HostedCheckoutAllSubmitAfterObserver implements ObserverInterface
                 $order->setState(Order::STATE_NEW)->setStatus('pending');
                 $order->save();
             }
+
+            $redirectUrl = $this->storeManager->getStore()->getBaseUrl()
+                            . '/lunar/index/HostedCheckout/?multishipping=1&quote_id=' . $firstOrder->getQuoteId();
+            $this->responseFactory->create()->setRedirect($redirectUrl)->sendResponse();
+            die();
         }
 
-        $redirectUrl = $this->storeManager->getStore()->getBaseUrl()
-                        . '/lunar/index/HostedCheckout/?multishipping=1&quote_id=' . $firstOrder->getQuoteId();
-        $this->responseFactory->create()->setRedirect($redirectUrl)->sendResponse();
-        die();
     }
 }
