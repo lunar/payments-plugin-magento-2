@@ -51,7 +51,7 @@ class HostedCheckoutAllSubmitAfterObserver implements ObserverInterface
             $redirectUrl = $this->storeManager->getStore()->getBaseUrl()
                             . '/lunar/index/HostedCheckout/?multishipping=1&quote_id=' . $firstOrder->getQuoteId();
             $this->responseFactory->create()->setRedirect($redirectUrl)->sendResponse();
-            die();
+            exit(0);
         }
 
     }
