@@ -872,4 +872,9 @@
     </type> -->
 
 
+    <type name="Magento\Multishipping\Controller\Checkout\OverviewPost">
+       <plugin name="lunar_multishipping_redirect" type="Lunar\Payment\Plugin\MultishippingRedirect" />
+    </type>
+
+
 </config>

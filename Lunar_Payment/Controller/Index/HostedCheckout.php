@@ -244,8 +244,7 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
 
             $dataRedirectUrl = $this->storeManager->getStore()->getBaseUrl();
             if ($this->isMultishipping) {
-                // $dataRedirectUrl .= 'multishipping/checkout/success';
-                $dataRedirectUrl .= 'lunar/index/MultishippingSuccess';
+                $dataRedirectUrl .= 'multishipping/checkout/success';
             } else {
                 $dataRedirectUrl .= 'checkout/onepage/success';
             }
