@@ -16,6 +16,8 @@ define(
 
         return PaymentDefaultComponent.extend({
             defaults: {
+                template: '',
+                checkoutConfig: {},
                 redirectAfterPlaceOrder: false,
                 controllerURL: "lunar/index/HostedCheckout",
                 logger: window.LunarLoggerHosted,

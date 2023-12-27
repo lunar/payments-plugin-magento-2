@@ -93,7 +93,7 @@ class OrderHistory extends \Magento\Sales\Block\Order\History
     private function makeCurlRequest(
         string $uriEndpoint,
         array $params = [],
-        string $requestMethod = Request::HTTP_METHOD_POST,
+        string $requestMethod = Request::HTTP_METHOD_POST
     ) {
 
         $allParams = [

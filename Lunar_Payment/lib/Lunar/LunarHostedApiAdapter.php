@@ -41,16 +41,21 @@ if (!class_exists('Lunar\\LunarHostedApiAdapter')) {
          */
         public function request($url, $data = null)
         {
-            $lunarApiClient = new Lunar($this->apiKey);
+            $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
+            $cookieManager = $objectManager->get('\Magento\Framework\Stdlib\CookieManagerInterface');
 
-            $data = $data['lunarHosted']; // set in AbstractTransation class
+            $testMode = !!$cookieManager->getCookie('lunar_testmode');
+
+            $lunarApiClient = new Lunar($this->apiKey, null, $testMode);
+
+            $data = $data['lunarHosted']; // set in AbstractTransaction class
 
             switch (true) {
-                case str_contains($url, 'capture'):
+                case strstr($url, 'capture'):
                     return $lunarApiClient->payments()->capture($data['id'], $data);
-                case str_contains($url, 'refund'):
+                case strstr($url, 'refund'):
                     return $lunarApiClient->payments()->refund($data['id'], $data);
-                case str_contains($url, 'void'):
+                case strstr($url, 'void'):
                     return $lunarApiClient->payments()->cancel($data['id'], $data);
             }
         }
