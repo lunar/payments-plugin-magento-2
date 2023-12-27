@@ -6,17 +6,16 @@
         
     <head>
         <css src="Lunar_Payment/css/lunar_payment.css" />
-        <script src="https://sdk.paylike.io/a.js" src_type="url" />
         <link src="Lunar_Payment::js/logs.js"/>
     </head>
 
     <body>
       <referenceContainer name="content">
-          <block class="Magento\Multishipping\Block\Checkout\Billing" template="Lunar_Payment::multishipping.phtml" cacheable="false">
-              <arguments>
-                  <argument name="checkout_data" xsi:type="object">Magento\Multishipping\Block\DataProviders\Billing</argument>
-              </arguments>
-          </block>
+            <block class="Lunar\Payment\Block\Data" name="lunar_data" template="Lunar_Payment::multishipping.phtml" cacheable="false">
+                <arguments>
+                    <argument name="checkout_data" xsi:type="object">Magento\Multishipping\Block\DataProviders\Billing</argument>
+                </arguments>
+            </block>
       </referenceContainer>
     </body>
 </page>

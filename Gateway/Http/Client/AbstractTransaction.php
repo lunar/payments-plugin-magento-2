@@ -38,7 +38,7 @@ abstract class AbstractTransaction implements ClientInterface
 		$response['object'] = [];
 
 		$amount = $this->helper->getAmount( $value['CURRENCY'], $value['AMOUNT'] );
-		$decimals = $this->helper->getCurrency($value['CURRENCY'])['exponent'] ?? 0;
+		$decimals = $this->helper->getCurrency($value['CURRENCY'])['exponent'] ?? 2;
 		$data = [
 			'amount'   => $amount,
 			'currency' => $value['CURRENCY'],

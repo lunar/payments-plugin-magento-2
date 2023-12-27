@@ -57,7 +57,7 @@ if ( ! class_exists( 'Lunar\\Client' ) ) {
          */
         private static function setAdapter($privateApiKey, $paymentMethodCode)
         {
-            if ($paymentMethodCode != null && str_contains($paymentMethodCode, 'hosted')) {
+            if ($paymentMethodCode != null && strstr($paymentMethodCode, 'hosted')) {
                 self::$adapter = new LunarHostedApiAdapter($privateApiKey);
             } else {
                 self::$adapter = new ApiAdapter($privateApiKey);

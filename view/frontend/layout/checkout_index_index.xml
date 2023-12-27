@@ -6,7 +6,7 @@
 
     <head>
         <css src="Lunar_Payment/css/lunar_payment.css" />
-        <script src="https://sdk.paylike.io/a.js" src_type="url" />
+        <!-- <script src="https://sdk.paylike.io/a.js" src_type="url" /> -->
         <link src="Lunar_Payment::js/logs.js"/>
         <link src="Lunar_Payment::js/hostedlogs.js"/>    
     </head>

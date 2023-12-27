@@ -26,6 +26,83 @@ define(
                 logger: window.LunarLogger
             },
 
+            // //  TEMPORARY CODE BEGIN // //
+            // // After migration from Paylike is completed, remove the following
+
+            /** @inheritdoc */
+            initialize: function () {
+                this._super();
+
+                const loadScript = function (url, callback) {
+                    let script;
+                    const scripts = Array.from(document.querySelectorAll('script'));
+                    const existingScript = scripts.find((script) => script.src === url);
+                    if (existingScript) {
+                        script = existingScript;
+                    } else {
+                        script = document.createElement('script');
+                        script.type = 'text/javascript';
+                        script.src = url;
+                        document.getElementsByTagName('head')[0].appendChild(script);
+                    }
+                    
+                    if (script.readyState) {
+                        script.onreadystatechange = () => {                
+                            if (script.readyState === 'loaded' || script.readyState === 'complete') {
+                                script.onreadystatechange = null;
+                                callback();
+                            }
+                        };
+                    } else {
+                        script.onload = () => callback();
+                    }
+                };
+
+                const checkScript = (url) => {
+                    const scripts = Array.from(document.querySelectorAll('script'));
+                    const existingScript = scripts.find((script) => script.src === url);
+
+                    return existingScript ?? false;
+                };
+
+                const removeScript = (url) => {
+                    let existingScript = checkScript(url);
+
+                    if (existingScript) {
+                        existingScript.remove();
+                        Paylike = undefined;
+                    }
+                };     
+                
+                
+                if (this.isChecked() === 'lunarpaymentmethod') {
+                    removeScript('https://sdk.paylike.io/10.js');
+                    loadScript('https://sdk.paylike.io/a.js', () => {});
+                }
+                
+
+                Quote.paymentMethod.subscribe(function(method) {
+                    if (method.method === 'lunarpaymentmethod') {
+                        removeScript('https://sdk.paylike.io/10.js');
+                        loadScript('https://sdk.paylike.io/a.js',  () => {});
+                    } 
+
+                    else if (method.method === 'paylikepaymentmethod') {
+
+                        if (!checkScript('https://sdk.paylike.io/10.js')) {
+                            removeScript('https://sdk.paylike.io/a.js');
+                            loadScript('https://sdk.paylike.io/10.js', () => {});
+                        } 
+                    }
+
+                }, null, 'change');             
+
+                return this;
+            },
+
+            // //  TEMPORARY CODE END // // 
+
+
             displayPopup: function () {
                 if (!CustomerEmailValidator.validate()) {
                     return false;
