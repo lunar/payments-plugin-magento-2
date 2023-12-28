@@ -67,7 +67,7 @@ class LogoUrl extends Value
         // if (! in_array($fileExtension, $allowedExtensions)) {
         //     /** Mark the new value as invalid */
         //     $this->_dataSaveAllowed = false;
-        // 	throw new LocalizedException(__('The image file must have one of the following extensions: ' . implode(', ', $allowedExtensions)));
+        //     throw new LocalizedException(__('The image file must have one of the following extensions: ' . implode(', ', $allowedExtensions)));
         // }
 
         return $this;

@@ -37,6 +37,7 @@ use Lunar\Lunar;
  * Controller responsible to manage Hosted Checkout payments
  *
  * NOTE: for multishipping flow, we set the quote in $this->order property
+ *
  * @TODO change the logic to use interchangeable order/quote objects 
  */
 class HostedCheckout implements \Magento\Framework\App\ActionInterface
@@ -97,7 +98,6 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
         CartRepositoryInterface $cartRepositoryInterface,
         Order $orderModel,
         Quote $quote,
-
         InvoiceCollectionFactory $invoiceCollectionFactory,
         InvoiceService $invoiceService,
         TransactionFactory $transactionFactory,
@@ -209,9 +209,11 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
             if ($this->isMultishipping) {
                 return $this->response->setRedirect($redirectUrl);
             } else {
-                return $this->sendJsonResponse([
+                return $this->sendJsonResponse(
+                    [
                     'paymentRedirectURL' => $redirectUrl,
-                ]);
+                    ]
+                );
             }
 
 
@@ -320,6 +322,7 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
 
         /**
          * Unset some unnecessary args for hosted request
+         *
          * @TODO remove them from ConfigProvider when hosted migration will be done
          */
         unset(
@@ -353,7 +356,7 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
      */
     private function getOrderCollectionByQuoteId($quoteId)
     {
-       return $this->orderCollectionFactory->create()
+        return $this->orderCollectionFactory->create()
             ->addFieldToSelect('*')
             ->addFieldToFilter(
                 'quote_id',
@@ -547,7 +550,8 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
 
     /**
      * Gets errors from a failed api request
-     * @param array $result The result returned by the api wrapper.
+     *
+     * @param  array $result The result returned by the api wrapper.
      * @return string
      */
     private function getResponseError($result)

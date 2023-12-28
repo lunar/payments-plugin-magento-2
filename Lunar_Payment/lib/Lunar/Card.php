@@ -4,9 +4,9 @@ namespace Lunar\Payment\lib\Lunar;
 
 /**
  * Class Card
+ *
  * @package Lunar
  * Handles card operations.
- *
  */
 if (!class_exists('Lunar\\Card')) {
     class Card

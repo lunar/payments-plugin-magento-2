@@ -23,7 +23,7 @@ class HostedCheckoutAllSubmitAfterObserver implements ObserverInterface
 
     /**
      *
-     * @param Observer $observer
+     * @param  Observer $observer
      * @return $this
      */
     public function execute(Observer $observer)
@@ -35,7 +35,7 @@ class HostedCheckoutAllSubmitAfterObserver implements ObserverInterface
 
             $firstOrder = $orders[0]; 
 
-            if ( ! in_array($firstOrder->getPayment()->getMethod(), ConfigProvider::LUNAR_HOSTED_METHODS)) {
+            if (! in_array($firstOrder->getPayment()->getMethod(), ConfigProvider::LUNAR_HOSTED_METHODS)) {
                 return;
             }
 

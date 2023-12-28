@@ -12,6 +12,7 @@ use Magento\Framework\Setup\Patch\PatchRevertableInterface;
 /**
  * Add new Order Status to be applied to the order
  * For patches documentation:
+ *
  * @see https://devdocs.magento.com/guides/v2.4/extension-dev-guide/declarative-schema/data-patches.html
  */
 class AddNewOrderStatusPatch implements DataPatchInterface, PatchVersionInterface, PatchRevertableInterface

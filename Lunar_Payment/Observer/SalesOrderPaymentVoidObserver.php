@@ -23,7 +23,7 @@ class SalesOrderPaymentVoidObserver implements ObserverInterface
     ];
 
     /**
-     * @param Observer $observer
+     * @param  Observer $observer
      * @return $this
      */
     public function execute(Observer $observer)

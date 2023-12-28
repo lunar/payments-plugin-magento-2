@@ -35,14 +35,13 @@ class TxnIdHandler implements HandlerInterface
     /**
      * Handles transaction id
      *
-     * @param array $handlingSubject
-     * @param array $response
+     * @param  array $handlingSubject
+     * @param  array $response
      * @return void
      */
     public function handle(array $handlingSubject, array $response)
     {
-        if (
-            !isset($handlingSubject['payment'])
+        if (!isset($handlingSubject['payment'])
             || !$handlingSubject['payment'] instanceof PaymentDataObjectInterface
         ) {
             throw new \InvalidArgumentException(__('Payment data object should be provided'));

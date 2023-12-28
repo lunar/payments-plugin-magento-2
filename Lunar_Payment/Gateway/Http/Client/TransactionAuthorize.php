@@ -36,7 +36,7 @@ class TransactionAuthorize implements ClientInterface
     /**
      * Places request to gateway. Returns result as ENV array
      *
-     * @param TransferInterface $transferObject
+     * @param  TransferInterface $transferObject
      * @return array
      */
     public function placeRequest(TransferInterface $transferObject)
@@ -71,9 +71,7 @@ class TransactionAuthorize implements ClientInterface
                     'TXN_ID' => $data['TXN_ID'],
                     'TXN_TYPE' => $data['TXN_TYPE']
                 ],
-
                 $this->getFieldsBasedOnResponseType($resultCode)
-
             );
         }
     }
@@ -81,14 +79,14 @@ class TransactionAuthorize implements ClientInterface
     /**
      * Returns response fields for result code
      *
-     * @param int $resultCode
+     * @param  int $resultCode
      * @return array
      */
     private function getFieldsBasedOnResponseType($resultCode)
     {
         switch ($resultCode) {
-            case self::FAILURE:
-                return [
+        case self::FAILURE:
+            return [
                     'FRAUD_MSG_LIST' => [
                         'Stolen card',
                         'Customer location differs'

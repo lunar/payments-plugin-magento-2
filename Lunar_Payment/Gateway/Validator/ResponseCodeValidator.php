@@ -13,7 +13,7 @@ class ResponseCodeValidator extends AbstractValidator
     /**
      * Performs validation of result code
      *
-     * @param array $validationSubject
+     * @param  array $validationSubject
      * @return ResultInterface
      */
     public function validate(array $validationSubject)
@@ -38,7 +38,7 @@ class ResponseCodeValidator extends AbstractValidator
     }
 
     /**
-     * @param array $response
+     * @param  array $response
      * @return bool
      */
     private function isSuccessfulTransaction(array $response)

@@ -22,7 +22,7 @@ class VoidRequest implements BuilderInterface
 
     /**
      * @param ConfigInterface $config
-     * @param Order $order
+     * @param Order           $order
      */
     public function __construct(
         ConfigInterface $config,
@@ -35,13 +35,12 @@ class VoidRequest implements BuilderInterface
     /**
      * Builds ENV request
      *
-     * @param array $buildSubject
+     * @param  array $buildSubject
      * @return array
      */
     public function build(array $buildSubject)
     {
-        if (
-            !isset($buildSubject['payment'])
+        if (!isset($buildSubject['payment'])
             || !$buildSubject['payment'] instanceof PaymentDataObjectInterface
         ) {
             throw new \InvalidArgumentException(__('Payment data object should be provided'));

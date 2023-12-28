@@ -4,6 +4,7 @@ namespace Lunar\Payment\lib\Lunar;
 
 /**
  * Class Client
+ *
  * @package Lunar
  * Manages the app creation.
  */

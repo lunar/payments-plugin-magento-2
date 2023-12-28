@@ -21,6 +21,7 @@ class LunarHostedLogActions extends Field
     /**
      * This param is needed for compatibility with
      * Magento\Config\Block\System\Config\Form\Field::_getElementHtml(AbstractElement $element)
+     *
      * @param AbstractElement $element
      */
     protected function _getElementHtml(AbstractElement $element)

@@ -15,6 +15,7 @@ use Lunar\Payment\lib\Lunar\Transaction;
 
 /**
  * Class PaymentAdapter
+ *
  * @codeCoverageIgnore
  * Adapter used for capture/refund/void an order
  */
@@ -77,8 +78,8 @@ class PaymentAdapter
     }
 
     /**
-     * @param string $transactionId
-     * @param array $data
+     * @param  string $transactionId
+     * @param  array  $data
      * @return array
      */
     public function capture($transactionId, array $data)
@@ -87,8 +88,8 @@ class PaymentAdapter
     }
 
     /**
-     * @param string $transactionId
-     * @param array $data
+     * @param  string $transactionId
+     * @param  array  $data
      * @return array
      */
     public function void($transactionId, array $data)
@@ -97,8 +98,8 @@ class PaymentAdapter
     }
 
     /**
-     * @param string $transactionId
-     * @param array $data
+     * @param  string $transactionId
+     * @param  array  $data
      * @return array
      */
     public function refund($transactionId, array $data)
@@ -140,6 +141,7 @@ class PaymentAdapter
 
     /**
      * Get payment method code from either quote or order
+     *
      * @return string
      */
     private function setPaymentMethodCode()

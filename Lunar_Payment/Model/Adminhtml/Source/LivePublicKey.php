@@ -23,16 +23,6 @@ class LivePublicKey extends Value
      */
     protected $helper;
 
-    /**
-     * @param Context $context
-     * @param Registry $registry
-     * @param ScopeConfigInterface $config
-     * @param TypeListInterface $cacheTypeList
-     * @param AbstractResource|null $resource
-     * @param AbstractDb|null $resourceCollection
-     * @param Helper
-     * @param array $data
-     */
     public function __construct(
         Context $context,
         Registry $registry,

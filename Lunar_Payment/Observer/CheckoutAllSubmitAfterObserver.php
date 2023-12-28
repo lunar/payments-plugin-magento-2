@@ -35,14 +35,7 @@ class CheckoutAllSubmitAfterObserver implements ObserverInterface
     protected $invoiceSender;
     protected $transactionFactory;
 
-    /**
-     * @param Logger $logger
-     * @param ScopeConfigInterface $scopeConfig
-     * @param CollectionFactory $invoiceCollectionFactory
-     * @param InvoiceService $invoiceService
-     * @param TransactionFactory $transactionFactory
-     * @param InvoiceSender $invoiceSender
-     */
+
     public function __construct(
         Logger $logger,
         ScopeConfigInterface $scopeConfig,
@@ -61,7 +54,7 @@ class CheckoutAllSubmitAfterObserver implements ObserverInterface
 
     /**
      *
-     * @param Observer $observer
+     * @param  Observer $observer
      * @return $this
      */
     public function execute(Observer $observer)

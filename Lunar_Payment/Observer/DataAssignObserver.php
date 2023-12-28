@@ -11,7 +11,7 @@ class DataAssignObserver extends AbstractDataAssignObserver
     private const TRANSACTION_RESULT = 'transactionid';
 
     /**
-     * @param Observer $observer
+     * @param  Observer $observer
      * @return void
      */
     public function execute(Observer $observer)

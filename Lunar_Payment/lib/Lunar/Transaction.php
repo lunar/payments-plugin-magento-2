@@ -4,9 +4,9 @@ namespace Lunar\Payment\lib\Lunar;
 
 /**
  * Class Transaction
+ *
  * @package Lunar
  * Handles transaction operations.
- *
  */
 if (!class_exists('Lunar\\Transaction')) {
     class Transaction
@@ -37,7 +37,6 @@ if (!class_exists('Lunar\\Transaction')) {
          *
          * @return int|mixed
          * Return the transaction data
-         *
          */
         public static function fetch($transactionId)
         {

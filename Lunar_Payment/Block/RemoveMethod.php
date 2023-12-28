@@ -10,9 +10,9 @@ class RemoveMethod extends \Magento\Config\Block\System\Config\Form
     /**
      * Initialize config field group
      *
-     * @param \Magento\Config\Model\Config\Structure\Element\Group $group
-     * @param \Magento\Config\Model\Config\Structure\Element\Section $section
-     * @param \Magento\Framework\Data\Form\AbstractForm $form
+     * @param  \Magento\Config\Model\Config\Structure\Element\Group   $group
+     * @param  \Magento\Config\Model\Config\Structure\Element\Section $section
+     * @param  \Magento\Framework\Data\Form\AbstractForm              $form
      * @return void
      */
     protected function _initGroup(

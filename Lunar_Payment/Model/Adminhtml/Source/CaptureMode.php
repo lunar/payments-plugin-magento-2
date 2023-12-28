@@ -17,7 +17,6 @@ class CaptureMode implements OptionSourceInterface
      *
      * @return array
      */
-
     public function toOptionArray()
     {
         return [
