@@ -8,8 +8,8 @@ use Magento\Payment\Model\Method\Logger;
 
 class TransactionAuthorize implements ClientInterface
 {
-    private const SUCCESS = 1;
-    private const FAILURE = 0;
+    public const SUCCESS = 1;
+    public const FAILURE = 0;
 
     /**
      * @var array

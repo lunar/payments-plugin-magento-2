@@ -2,11 +2,14 @@
 
 namespace Lunar\Payment\Controller\Index;
 
+
+use Magento\Framework\App\RequestInterface;
 use Magento\Framework\Controller\Result\JsonFactory;
 use Magento\Framework\Filesystem\Driver\File;
 
 class Log implements \Magento\Framework\App\ActionInterface
 {
+    private $request;
     private $resultJsonFactory;
     private $fileDriver;
 
@@ -16,9 +19,11 @@ class Log implements \Magento\Framework\App\ActionInterface
     private string $LOGS_DIR_NAME = self::MAIN_LOG_DIR . DIRECTORY_SEPARATOR . "lunar";
 
     public function __construct(
+        RequestInterface $request,
         JsonFactory $resultJsonFactory,
         File $fileDriver
     ) {
+      $this->request = $request;
         $this->resultJsonFactory = $resultJsonFactory;
         $this->fileDriver = $fileDriver;
     }
@@ -28,10 +33,10 @@ class Log implements \Magento\Framework\App\ActionInterface
      */
     public function execute()
     {
-        $post = $this->getRequest()->getPostValue();
+        $post = $this->request->getParams();
 
         /** Specific folder name for each payment method */
-        $methodCode = $post['method_code'] ?? 'lunar';
+        $methodCode = $post['method_code'] ? $post['method_code'] : 'lunar';
         $this->LOGS_DIR_NAME = str_replace('lunar', $methodCode, $this->LOGS_DIR_NAME);
 
         if (isset($post["export"])) {
@@ -119,7 +124,7 @@ class Log implements \Magento\Framework\App\ActionInterface
      */
     private function log()
     {
-        $post = $this->getRequest()->getPostValue();
+        $post = $this->request->getParams();
 
         if (!$this->fileDriver->isDirectory($this->LOGS_DIR_NAME)) {
             $this->fileDriver->createDirectory($this->LOGS_DIR_NAME);
@@ -138,6 +143,6 @@ class Log implements \Magento\Framework\App\ActionInterface
         $newContent = PHP_EOL . date(self::LOGS_DATE_FORMAT) . ": " . $post["message"];
         $this->fileDriver->filePutContents($filename, $newContent, FILE_APPEND);
 
-        return null;
+        return $this->resultJsonFactory->create()->setJsonData('{"success": true}');
     }
 }

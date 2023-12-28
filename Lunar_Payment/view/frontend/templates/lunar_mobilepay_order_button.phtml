@@ -1,5 +1,16 @@
 <?php
 
+    function getLunarAdditionalInfoFromPayment($payment, $key)
+    {
+        $additionalInformation = $payment->getAdditionalInformation();
+        $data = [];
+        if ($additionalInformation && array_key_exists($key, $additionalInformation)) {
+            $data = $additionalInformation[$key];
+        }
+
+        return $data;
+    }
+
     $order = $block->getOrder();
     
     $payment = $order->getPayment();
@@ -28,7 +39,7 @@
                         . $buttonText . '</a>';
 
 
-        echo ($buttonHtml);
+        echo $block->escapeHtml($buttonHtml);
     }
 
 
@@ -40,7 +51,7 @@
     ) {
 
         // $buttonText = '';
-        // $orderHints = getAdditionalInfoFromPayment($payment, 'lunarmobilepayhosted_hints');
+        // $orderHints = getLunarAdditionalInfoFromPayment($payment, 'lunarmobilepayhosted_hints');
         // if ($orderHints) {
         //     $buttonText = 'Finalize order';
         // } else {
@@ -56,18 +67,5 @@
 
 
         // echo ($buttonHtml);
-    }
-
-
-
-    function getAdditionalInfoFromPayment($payment, $key)
-    {
-        $additionalInformation = $payment->getAdditionalInformation();
-        $data = [];
-        if ($additionalInformation && array_key_exists($key, $additionalInformation)) {
-            $data = $additionalInformation[$key];
-        }
-
-        return $data;
     }
 ?>

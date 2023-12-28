@@ -8,7 +8,7 @@ use Magento\Quote\Api\Data\PaymentInterface;
 
 class DataAssignObserver extends AbstractDataAssignObserver
 {
-    private const TRANSACTION_RESULT = 'transactionid';
+    public const TRANSACTION_RESULT = 'transactionid';
 
     /**
      * @param  Observer $observer

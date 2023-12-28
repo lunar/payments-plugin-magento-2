@@ -9,8 +9,8 @@ use Magento\Framework\Data\OptionSourceInterface;
  */
 class CheckoutMode implements OptionSourceInterface
 {
-    private const BEFORE_ORDER = 'before_order';
-    private const AFTER_ORDER = 'after_order';
+    public const BEFORE_ORDER = 'before_order';
+    public const AFTER_ORDER = 'after_order';
 
     /**
      * Possible checkout mode types

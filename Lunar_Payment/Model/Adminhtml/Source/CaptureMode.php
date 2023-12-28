@@ -9,8 +9,8 @@ use Magento\Framework\Data\OptionSourceInterface;
  */
 class CaptureMode implements OptionSourceInterface
 {
-    private const MODE_INSTANT = 'instant';
-    private const MODE_DELAYED = 'delayed';
+    public const MODE_INSTANT = 'instant';
+    public const MODE_DELAYED = 'delayed';
 
     /**
      * Possible capture mode types
