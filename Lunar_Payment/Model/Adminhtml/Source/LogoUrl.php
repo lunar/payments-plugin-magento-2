@@ -78,16 +78,16 @@ class LogoUrl extends Value
      */
     private function fileExists($url)
     {
-        $this->curl->setOption(CURLOPT_URL, $url);
-        $this->curl->setOption(CURLOPT_HEADER, 1);
-        $this->curl->setOption(CURLOPT_NOBODY, 1);
-        $this->curl->setOption(CURLOPT_RETURNTRANSFER, 1);
-        $this->curl->setOption(CURLOPT_FRESH_CONNECT, 1);
+        $this->curl->setOptions([
+            CURLOPT_HEADER => 1,
+            CURLOPT_NOBODY => 1,
+            CURLOPT_RETURNTRANSFER => 1,
+            CURLOPT_FRESH_CONNECT => 1,
+        ]);
 
         $this->curl->get($url);
-        $response = $this->curl->getBody();;
 
-        if (!$response) {
+        if ($this->curl->getStatus() >= 400) {
             return false;
         }
 
