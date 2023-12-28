@@ -10,7 +10,7 @@
                 <label>Lunar</label>
                 <comment>
                     <![CDATA[
-                        <script type="text/javascript">
+                        <script>
                             /**
                              *   Show/hide test fields based on query parameter
                              */
@@ -204,7 +204,7 @@
                 <field id="logo_url" translate="label comment" type="text" sortOrder="120" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Logo URL</label>
                     <comment>URL must start with "https://", and the image must have PNG, JPG, JPEG extension.</comment>
-                    <backend_model>Lunar\Payment\Model\Adminhtml\Source\MobilePayLogoUrl</backend_model>
+                    <backend_model>Lunar\Payment\Model\Adminhtml\Source\LogoUrl</backend_model>
                     <validate>required-entry</validate>
                     <depends>
                         <field id="active">1</field>

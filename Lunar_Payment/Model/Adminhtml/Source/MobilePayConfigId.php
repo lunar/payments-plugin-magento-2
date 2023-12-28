@@ -6,7 +6,7 @@ use Magento\Framework\App\Config\Value;
 use Magento\Framework\Exception\LocalizedException;
 
 /**
- * Class MobilePayConfigId
+ *
  */
 class MobilePayConfigId extends Value
 {
@@ -23,7 +23,8 @@ class MobilePayConfigId extends Value
             /** Mark the new value as invalid */
             $this->_dataSaveAllowed = false;
             throw new LocalizedException(
-                __('The Mobile Pay config id key doesn\'t seem to be valid. It should have exactly 32 characters. Current count: ' . strlen($configurationId))
+                'The Mobile Pay config id key doesn\'t seem to be valid. It should have exactly 32 characters. 
+                    Current count: ' . strlen($configurationId)
             );
         }
 

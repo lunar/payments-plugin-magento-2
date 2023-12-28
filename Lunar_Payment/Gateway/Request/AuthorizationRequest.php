@@ -1,8 +1,5 @@
 <?php
-/**
- * Copyright © 2016 Magento. All rights reserved.
- * See COPYING.txt for license details.
- */
+
 namespace Lunar\Payment\Gateway\Request;
 
 use Magento\Checkout\Model\Cart;
@@ -44,7 +41,8 @@ class AuthorizationRequest implements BuilderInterface
      */
     public function build(array $buildSubject)
     {
-        if (!isset($buildSubject['payment'])
+        if (
+            !isset($buildSubject['payment'])
             || !$buildSubject['payment'] instanceof PaymentDataObjectInterface
         ) {
             throw new \InvalidArgumentException(__('Payment data object should be provided'));

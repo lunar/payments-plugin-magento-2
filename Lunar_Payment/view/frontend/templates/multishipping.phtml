@@ -10,8 +10,8 @@ $lunarPaymentMethod = $block->getSelectedMethodCode();
 if ('lunarpaymentmethod' === $lunarPaymentMethod) {
 
     /** Set checkout data as window variables. */
-    echo '<script type="text/javascript">window.checkoutConfig = ' . $lunarCheckoutConfig . '</script>';
-    echo '<script type="text/javascript">window.paymentMethod = "' . $lunarPaymentMethod . '"</script>';
+    echo '<script>window.checkoutConfig = ' . $lunarCheckoutConfig . '</script>';
+    echo '<script>window.paymentMethod = "' . $lunarPaymentMethod . '"</script>';
 
     /** Insert multishipping component */
     echo '<script src="' . $block->getViewFileUrl('Lunar_Payment::js/view/payment/lunarpaymentmethod/multishipping.js') . '"></script>';

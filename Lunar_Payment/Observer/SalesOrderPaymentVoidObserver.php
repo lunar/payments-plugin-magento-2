@@ -14,10 +14,10 @@ use Lunar\Payment\Model\Ui\ConfigProvider;
  */
 class SalesOrderPaymentVoidObserver implements ObserverInterface
 {
-    const LUNAR_PAYMENT_METHODS = [
+    public const LUNAR_PAYMENT_METHODS = [
         ConfigProvider::LUNAR_PAYMENT_CODE,
         ConfigProvider::MOBILEPAY_CODE,
-        
+
         ConfigProvider::LUNAR_PAYMENT_HOSTED_CODE,
         ConfigProvider::MOBILEPAY_HOSTED_CODE,
     ];
@@ -36,7 +36,7 @@ class SalesOrderPaymentVoidObserver implements ObserverInterface
         if (!empty($order)) {
             $methodName = $payment->getMethod();
 
-            if ( ! in_array($methodName, self::LUNAR_PAYMENT_METHODS)) {
+            if (!in_array($methodName, self::LUNAR_PAYMENT_METHODS)) {
                 return $this;
             }
 

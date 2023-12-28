@@ -1,4 +1,5 @@
 <?php
+
 namespace Lunar\Payment\lib\Lunar;
 
 use Lunar\Lunar;
@@ -42,7 +43,7 @@ if (!class_exists('Lunar\\LunarHostedApiAdapter')) {
         public function request($url, $data = null)
         {
             $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
-            $cookieManager = $objectManager->get('\Magento\Framework\Stdlib\CookieManagerInterface');
+            $cookieManager = $objectManager->get(\Magento\Framework\Stdlib\CookieManagerInterface::class);
 
             $testMode = !!$cookieManager->getCookie('lunar_testmode');
 

@@ -1,8 +1,5 @@
 <?php
-/**
- * Copyright © Magento, Inc. All rights reserved.
- * See COPYING.txt for license details.
- */
+
 namespace Lunar\Payment\Model\Adminhtml\Source;
 
 use Magento\Framework\Model\Context;
@@ -17,14 +14,14 @@ use Magento\Framework\Exception\LocalizedException;
 use Lunar\Payment\Helper\Data as Helper;
 
 /**
- * Class LivePublicKey
+ *
  */
 class LivePublicKey extends Value
 {
     /**
-	 * @var Helper
-	 */
-	protected $helper;
+     * @var Helper
+     */
+    protected $helper;
 
     /**
      * @param Context $context
@@ -41,9 +38,9 @@ class LivePublicKey extends Value
         Registry $registry,
         ScopeConfigInterface $config,
         TypeListInterface $cacheTypeList,
+        Helper $helper,
         AbstractResource $resource = null,
         AbstractDb $resourceCollection = null,
-        Helper $helper,
         array $data = []
     ) {
         $this->helper = $helper;
@@ -58,23 +55,23 @@ class LivePublicKey extends Value
     public function beforeSave()
     {
         /** Check if the new value is empty. */
-        if ( ! $this->getValue() ) {
-			return $this;
+        if (!$this->getValue()) {
+            return $this;
         }
 
         /** Check if we have saved any validation live public keys. */
-        if ( empty( Helper::$validation_live_public_keys ) ) {
+        if (empty(Helper::$validation_live_public_keys)) {
             return $this;
         }
 
         /** Check if the public key is exists among the saved ones. */
-        if ( ! in_array( $this->getValue(), Helper::$validation_live_public_keys ) ) {
+        if (!in_array($this->getValue(), Helper::$validation_live_public_keys)) {
             /** Mark the new value as invalid */
             $this->_dataSaveAllowed = false;
 
-			$message = __( "The live public key doesn't seem to be valid." );
-			throw new LocalizedException( $message );
-		}
+            $message = __("The live public key doesn't seem to be valid.");
+            throw new LocalizedException($message);
+        }
 
         return $this;
     }

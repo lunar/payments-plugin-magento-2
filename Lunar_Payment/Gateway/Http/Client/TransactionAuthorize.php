@@ -1,8 +1,5 @@
 <?php
-/**
- * Copyright © 2016 Magento. All rights reserved.
- * See COPYING.txt for license details.
- */
+
 namespace Lunar\Payment\Gateway\Http\Client;
 
 use Magento\Payment\Gateway\Http\ClientInterface;
@@ -11,8 +8,8 @@ use Magento\Payment\Model\Method\Logger;
 
 class TransactionAuthorize implements ClientInterface
 {
-    const SUCCESS = 1;
-    const FAILURE = 0;
+    private const SUCCESS = 1;
+    private const FAILURE = 0;
 
     /**
      * @var array
@@ -65,17 +62,17 @@ class TransactionAuthorize implements ClientInterface
     {
         $data = $transfer->getBody();
 
-        if(isset($data['TXN_ID'])){
+        if (isset($data['TXN_ID'])) {
 
             $resultCode = self::SUCCESS;
             return array_merge(
-            [
-                'RESULT_CODE' => $resultCode,
-                'TXN_ID' => $data['TXN_ID'],
-                'TXN_TYPE' => $data['TXN_TYPE']
-            ],
+                [
+                    'RESULT_CODE' => $resultCode,
+                    'TXN_ID' => $data['TXN_ID'],
+                    'TXN_TYPE' => $data['TXN_TYPE']
+                ],
 
-            $this->getFieldsBasedOnResponseType($resultCode)
+                $this->getFieldsBasedOnResponseType($resultCode)
 
             );
         }

@@ -1,8 +1,5 @@
 <?php
-/**
- * Copyright © Magento, Inc. All rights reserved.
- * See COPYING.txt for license details.
- */
+
 namespace Lunar\Payment\Model\Adminhtml\Source;
 
 use Magento\Framework\Model\Context;
@@ -19,14 +16,14 @@ use Paylike\Exception\ApiException;
 use Lunar\Payment\Helper\Data as Helper;
 
 /**
- * Class LiveApiKey
+ *
  */
 class LiveAppKey extends Value
 {
     /**
-	 * @var Helper
-	 */
-	protected $helper;
+     * @var Helper
+     */
+    protected $helper;
 
     /**
      * @param Context $context
@@ -43,9 +40,9 @@ class LiveAppKey extends Value
         Registry $registry,
         ScopeConfigInterface $config,
         TypeListInterface $cacheTypeList,
+        Helper $helper,
         AbstractResource $resource = null,
         AbstractDb $resourceCollection = null,
-        Helper $helper,
         array $data = []
     ) {
         $this->helper = $helper;
@@ -60,51 +57,51 @@ class LiveAppKey extends Value
     public function beforeSave()
     {
         /** Check if the new value is empty. */
-        if ( ! $this->getValue() ) {
-			return $this;
+        if (!$this->getValue()) {
+            return $this;
         }
 
         $api_exception = null;
         /** Instantiate Api client. */
-        $api_client = new ApiClient( $this->getValue() );
+        $api_client = new ApiClient($this->getValue());
 
         /** Validate the live app key by extracting the identity of the client. */
         try {
-			$identity = $api_client->apps()->fetch();
-		} catch ( ApiException $exception ) {
+            $identity = $api_client->apps()->fetch();
+        } catch (ApiException $exception) {
             /** Mark the new value as invalid */
             $this->_dataSaveAllowed = false;
 
-            $message = __( "The live private key doesn't seem to be valid." );
-            $message = $this->helper->handle_exceptions( $exception, $message );
-			throw new LocalizedException( $message );
+            $message = __("The live private key doesn't seem to be valid.");
+            $message = $this->helper->handle_exceptions($exception, $message);
+            throw new LocalizedException($message);
         }
 
         /** Extract and save all the live public keys of the merchants with the above extracted identity. */
         try {
-			$merchants = $api_client->merchants()->find( $identity['id'] );
-			if ( $merchants ) {
-				foreach ( $merchants as $merchant ) {
-					if ( !$merchant['test'] ) {
-						Helper::$validation_live_public_keys[] = $merchant['key'];
-					}
-				}
-			}
-		} catch ( ApiException $exception ) {
+            $merchants = $api_client->merchants()->find($identity['id']);
+            if ($merchants) {
+                foreach ($merchants as $merchant) {
+                    if (!$merchant['test']) {
+                        Helper::$validation_live_public_keys[] = $merchant['key'];
+                    }
+                }
+            }
+        } catch (ApiException $exception) {
             // we handle in the following statement
             $api_exception = $exception;
         }
 
-        if ( empty( Helper::$validation_live_public_keys ) ) {
+        if (empty(Helper::$validation_live_public_keys)) {
             /** Mark the new value as invalid */
             $this->_dataSaveAllowed = false;
 
-            $message = __( "The live private key is not valid or set to test mode." );
-            if ( $api_exception ) {
-                $message = $this->helper->handle_exceptions( $api_exception, $message );
+            $message = __("The live private key is not valid or set to test mode.");
+            if ($api_exception) {
+                $message = $this->helper->handle_exceptions($api_exception, $message);
             }
-			throw new LocalizedException( $message );
-		}
+            throw new LocalizedException($message);
+        }
 
         return $this;
     }

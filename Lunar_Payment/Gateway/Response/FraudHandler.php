@@ -1,8 +1,5 @@
 <?php
-/**
- * Copyright © 2016 Magento. All rights reserved.
- * See COPYING.txt for license details.
- */
+
 namespace Lunar\Payment\Gateway\Response;
 
 use Magento\Payment\Gateway\Data\PaymentDataObjectInterface;
@@ -11,7 +8,7 @@ use Magento\Sales\Model\Order\Payment;
 
 class FraudHandler implements HandlerInterface
 {
-    const FRAUD_MSG_LIST = 'FRAUD_MSG_LIST';
+    private const FRAUD_MSG_LIST = 'FRAUD_MSG_LIST';
 
     /**
      * Handles fraud messages
@@ -26,7 +23,8 @@ class FraudHandler implements HandlerInterface
             return;
         }
 
-        if (!isset($handlingSubject['payment'])
+        if (
+            !isset($handlingSubject['payment'])
             || !$handlingSubject['payment'] instanceof PaymentDataObjectInterface
         ) {
             throw new \InvalidArgumentException(__('Payment data object should be provided'));

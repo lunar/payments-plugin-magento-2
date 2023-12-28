@@ -2,18 +2,14 @@
 
 namespace Lunar\Payment\lib\Lunar;
 
-include_once( 'ApiAdapter.php' );
-include_once( 'LunarHostedApiAdapter.php' );
-include_once( 'Transaction.php' );
-include_once( 'Card.php' );
-
 /**
  * Class Client
  * @package Lunar
  * Manages the app creation.
  */
-if ( ! class_exists( 'Lunar\\Client' ) ) {
-    class Client {
+if (!class_exists('Lunar\\Client')) {
+    class Client
+    {
 
         /**
          * @var
@@ -28,7 +24,8 @@ if ( ! class_exists( 'Lunar\\Client' ) ) {
          * @param $privateApiKey
          * Set the api key for future calls
          */
-        public static function setKey( $privateApiKey, $paymentMethodCode = '' ) {
+        public static function setKey($privateApiKey, $paymentMethodCode = '')
+        {
             // self::$adapter = new ApiAdapter( $privateApiKey );
             self::setAdapter($privateApiKey, $paymentMethodCode);
         }
@@ -39,11 +36,12 @@ if ( ! class_exists( 'Lunar\\Client' ) ) {
          *
          * @return bool|null|ApiAdapter|LunarHostedApiAdapter
          */
-        public static function getAdapter( $privateApiKey = null, $paymentMethodCode = '' ) {
-            if ( self::$adapter ) {
+        public static function getAdapter($privateApiKey = null, $paymentMethodCode = '')
+        {
+            if (self::$adapter) {
                 return self::$adapter;
             } else {
-                if ( $privateApiKey ) {
+                if ($privateApiKey) {
                     // return new ApiAdapter( $privateApiKey );
                     self::setAdapter($privateApiKey, $paymentMethodCode);
                 } else {
@@ -52,8 +50,8 @@ if ( ! class_exists( 'Lunar\\Client' ) ) {
             }
         }
 
-        /** 
-         * 
+        /**
+         *
          */
         private static function setAdapter($privateApiKey, $paymentMethodCode)
         {
@@ -63,6 +61,5 @@ if ( ! class_exists( 'Lunar\\Client' ) ) {
                 self::$adapter = new ApiAdapter($privateApiKey);
             }
         }
-
     }
 }

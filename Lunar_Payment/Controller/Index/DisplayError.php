@@ -2,7 +2,6 @@
 
 namespace Lunar\Payment\Controller\Index;
 
-
 use Magento\Framework\App\ActionInterface;
 use Magento\Framework\View\Result\PageFactory;
 

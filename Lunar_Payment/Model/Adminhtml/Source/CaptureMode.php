@@ -1,19 +1,16 @@
 <?php
-/**
- * Copyright © 2016 Magento. All rights reserved.
- * See COPYING.txt for license details.
- */
+
 namespace Lunar\Payment\Model\Adminhtml\Source;
 
 use Magento\Framework\Data\OptionSourceInterface;
 
 /**
- * Class CaptureMode
+ *
  */
 class CaptureMode implements OptionSourceInterface
 {
-    const MODE_INSTANT = 'instant';
-    const MODE_DELAYED = 'delayed';
+    private const MODE_INSTANT = 'instant';
+    private const MODE_DELAYED = 'delayed';
 
     /**
      * Possible capture mode types

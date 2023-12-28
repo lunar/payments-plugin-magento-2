@@ -1,8 +1,5 @@
 <?php
-/**
- * Copyright © 2016 Magento. All rights reserved.
- * See COPYING.txt for license details.
- */
+
 namespace Lunar\Payment\Observer;
 
 use Magento\Framework\Event\ObserverInterface;
@@ -18,15 +15,16 @@ use Magento\Sales\Model\Order\Invoice;
 use Magento\Store\Model\ScopeInterface;
 
 use Lunar\Payment\Model\Ui\ConfigProvider;
+use Lunar\Payment\Setup\Patch\Data\AddNewOrderStatusPatch;
 
 /**
- * Class CheckoutAllSubmitAfterObserver
+ *
  */
 class CheckoutAllSubmitAfterObserver implements ObserverInterface
 {
 
     const LUNAR_CREDITCARD_METHODS = [
-        ConfigProvider::LUNAR_PAYMENT_CODE, 
+        ConfigProvider::LUNAR_PAYMENT_CODE,
         // ConfigProvider::LUNAR_PAYMENT_HOSTED_CODE
     ];
 
@@ -92,7 +90,7 @@ class CheckoutAllSubmitAfterObserver implements ObserverInterface
         $payment = $order->getPayment();
         $methodName = $payment->getMethod();
 
-        if ( ! in_array($methodName, self::LUNAR_CREDITCARD_METHODS)) {
+        if (!in_array($methodName, self::LUNAR_CREDITCARD_METHODS)) {
             return $this;
         }
 
@@ -106,7 +104,7 @@ class CheckoutAllSubmitAfterObserver implements ObserverInterface
 
             try {
                 $invoices = $this->invoiceCollectionFactory->create()
-                    ->addAttributeToFilter('order_id', array('eq' => $order->getId()));
+                    ->addAttributeToFilter('order_id', ['eq' => $order->getId()]);
                 $invoices->getSelect()->limit(1);
 
                 if ((int)$invoices->count() !== 0) {
@@ -122,7 +120,8 @@ class CheckoutAllSubmitAfterObserver implements ObserverInterface
                 $invoice->register();
                 $invoice->getOrder()->setCustomerNoteNotify(false);
                 $invoice->getOrder()->setIsInProcess(true);
-                $transactionSave = $this->transactionFactory->create()->addObject($invoice)->addObject($invoice->getOrder());
+                $transactionSave = $this->transactionFactory->create();
+                $transactionSave = $transactionSave->addObject($invoice)->addObject($invoice->getOrder());
                 $transactionSave->save();
 
                 if (!$invoice->getEmailSent() && $invoiceEmailMode == 1) {
@@ -133,14 +132,14 @@ class CheckoutAllSubmitAfterObserver implements ObserverInterface
                     }
                 }
             } catch (\Exception $e) {
-                $order->addStatusHistoryComment('Exception message: ' . $e->getMessage(), false); // addStatusHistoryComment() is deprecated !
+                $order->addStatusHistoryComment('Exception message: ' . $e->getMessage(), false);
                 $order->save(); // save() is deprecated !
                 return null;
             }
-        }
-        else if ("delayed" == $captureMode) {
+        } else if ("delayed" == $captureMode) {
 
-            $order->setState(Order::STATE_PENDING_PAYMENT)->setStatus(Order::STATE_PENDING_PAYMENT);
+            $order->setState(Order::STATE_PROCESSING)
+                ->setStatus(AddNewOrderStatusPatch::ORDER_STATUS_PAYMENT_RECEIVED_CODE);
             $order->save();
         }
     }

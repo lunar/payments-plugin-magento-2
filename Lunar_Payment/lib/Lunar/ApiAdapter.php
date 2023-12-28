@@ -1,5 +1,7 @@
 <?php
+
 namespace Lunar\Payment\lib\Lunar;
+
 /**
  * Class ApiAdapter
  * @package Lunar

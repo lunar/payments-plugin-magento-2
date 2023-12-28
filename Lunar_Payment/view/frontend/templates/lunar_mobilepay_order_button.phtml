@@ -8,8 +8,8 @@
     if (
         $payment
         && ('lunarmobilepay' == $payment->getMethod())
-        && is_null($payment->getAmountPaid())
-        && is_null($payment->getAmountAuthorized())
+        && null === $payment->getAmountPaid()
+        && null === $payment->getAmountAuthorized()
     ) {
 
         $buttonText = '';
@@ -35,8 +35,8 @@
     if (
         $payment
         && ('lunarmobilepayhosted' == $payment->getMethod())
-        && is_null($payment->getAmountPaid())
-        && is_null($payment->getAmountAuthorized())
+        && null === $payment->getAmountPaid()
+        && null === $payment->getAmountAuthorized()
     ) {
 
         // $buttonText = '';

@@ -12,18 +12,18 @@ use Lunar\Payment\Model\Adapter\PaymentAdapter;
 
 
 /**
- * Class AbstractTransaction
+ *
  */
 abstract class AbstractTransaction implements ClientInterface
-{ 
+{
 	protected $logger;
 	protected $adapter;
 	protected $helper;
 
 	public function __construct(
-								Logger $logger,
-								PaymentAdapter $adapter,
-								Helper $helper
+		Logger $logger,
+		PaymentAdapter $adapter,
+		Helper $helper
 	) {
 		$this->logger = $logger;
 		$this->adapter = $adapter;
@@ -33,11 +33,12 @@ abstract class AbstractTransaction implements ClientInterface
 	/**
 	 * @inheritdoc
 	 */
-	public function placeRequest( TransferInterface $transferObject ) {
+	public function placeRequest(TransferInterface $transferObject)
+	{
 		$value = $transferObject->getBody();
 		$response['object'] = [];
 
-		$amount = $this->helper->getAmount( $value['CURRENCY'], $value['AMOUNT'] );
+		$amount = $this->helper->getAmount($value['CURRENCY'], $value['AMOUNT']);
 		$decimals = $this->helper->getCurrency($value['CURRENCY'])['exponent'] ?? 2;
 		$data = [
 			'amount'   => $amount,
@@ -52,13 +53,13 @@ abstract class AbstractTransaction implements ClientInterface
 		];
 
 		try {
-			$response['object'] = $this->process( $value['TXN_ID'], $data );
-		} catch ( \Exception $e ) {
-			$message = __( $e->getMessage() ?: 'Sorry, but something went wrong' );
-			$this->logger->debug( (array) $message );
-			throw new ClientException( $message );
+			$response['object'] = $this->process($value['TXN_ID'], $data);
+		} catch (\Exception $e) {
+			$message = __($e->getMessage() ?: 'Sorry, but something went wrong');
+			$this->logger->debug((array) $message);
+			throw new ClientException($message);
 		} finally {
-			if ( $response['object'] == false || isset($response['object']['declinedReason']) ) {
+			if ($response['object'] == false || isset($response['object']['declinedReason'])) {
 				$response['RESULT_CODE'] = 0;
 			} else {
 				$response['RESULT_CODE'] = 1;
@@ -86,5 +87,5 @@ abstract class AbstractTransaction implements ClientInterface
 	 *
 	 * @return Paylike|Lunar response
 	 */
-	abstract protected function process( $transactionid, array $data );
+	abstract protected function process($transactionid, array $data);
 }

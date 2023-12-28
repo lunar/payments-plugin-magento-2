@@ -1,8 +1,5 @@
 <?php
-/**
- * Copyright © 2016 Magento. All rights reserved.
- * See COPYING.txt for license details.
- */
+
 namespace Lunar\Payment\Gateway\Validator;
 
 use Magento\Payment\Gateway\Validator\AbstractValidator;
@@ -11,7 +8,7 @@ use Lunar\Payment\Gateway\Http\Client\TransactionAuthorize;
 
 class ResponseCodeValidator extends AbstractValidator
 {
-    const RESULT_CODE = 'RESULT_CODE';
+    private const RESULT_CODE = 'RESULT_CODE';
 
     /**
      * Performs validation of result code
@@ -47,6 +44,6 @@ class ResponseCodeValidator extends AbstractValidator
     private function isSuccessfulTransaction(array $response)
     {
         return isset($response[self::RESULT_CODE])
-        && $response[self::RESULT_CODE] !== TransactionAuthorize::FAILURE;
+            && $response[self::RESULT_CODE] !== TransactionAuthorize::FAILURE;
     }
 }

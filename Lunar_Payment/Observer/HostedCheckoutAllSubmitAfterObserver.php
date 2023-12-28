@@ -9,7 +9,7 @@ use Magento\Sales\Model\Order;
 use Lunar\Payment\Model\Ui\ConfigProvider;
 
 /**
- * Class HostedCheckoutAllSubmitAfterObserver
+ *
  */
 class HostedCheckoutAllSubmitAfterObserver implements ObserverInterface
 {
