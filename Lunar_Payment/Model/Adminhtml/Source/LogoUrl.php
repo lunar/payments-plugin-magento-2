@@ -6,10 +6,30 @@ use Magento\Framework\App\Config\Value;
 use Magento\Framework\Exception\LocalizedException;
 
 /**
- * Class LogoUrl
+ *
  */
 class LogoUrl extends Value
 {
+    /**
+     * @var \Magento\Framework\HTTP\Client\Curl
+     */
+    private $curl;
+
+    public function __construct(
+        \Magento\Framework\HTTP\Client\Curl $curl,
+        \Magento\Framework\Model\Context $context,
+        \Magento\Framework\Registry $registry,
+        \Magento\Framework\App\Config\ScopeConfigInterface $config,
+        \Magento\Framework\App\Cache\TypeListInterface $cacheTypeList,
+        \Magento\Framework\Model\ResourceModel\AbstractResource $resource = null,
+        \Magento\Framework\Data\Collection\AbstractDb $resourceCollection = null,
+        array $data = []
+    ) {
+        parent::__construct($context, $registry, $config, $cacheTypeList, $resource, $resourceCollection, $data);
+
+        $this->curl = $curl;
+    }
+
     /**
      * Method used for checking if the new value is valid before saving.
      *
@@ -20,11 +40,11 @@ class LogoUrl extends Value
         $logoUrl = $this->getValue();
         $allowedExtensions = ['png', 'jpg', 'jpeg'];
 
-        if (! preg_match('/^https:\/\//', $logoUrl)) {
+        if (!preg_match('/^https:\/\//', $logoUrl)) {
             /** Mark the new value as invalid */
             $this->_dataSaveAllowed = false;
-			throw new LocalizedException(__('The image url must begin with https://.'));
-		}
+            throw new LocalizedException(__('The image url must begin with https://.'));
+        }
 
         if (!$this->fileExists($logoUrl)) {
             $this->_dataSaveAllowed = false;
@@ -32,12 +52,12 @@ class LogoUrl extends Value
         }
 
         // try {
-        //     $fileSpecs = getimagesize($logoUrl);
+        //     $fileSpecs = getimagesize($logoUrl); // deprecated, use getimagesizefromstring
         // } catch (\Exception $e) {
         //     $this->_dataSaveAllowed = false;
         //     throw new LocalizedException(__('The image file doesn\'t seem to be valid'));
         // }
-        
+
         // $fileMimeType = explode('/', $fileSpecs['mime'] ?? '');
         // $fileExtension = end($fileMimeType);
 
@@ -47,8 +67,8 @@ class LogoUrl extends Value
         // if (! in_array($fileExtension, $allowedExtensions)) {
         //     /** Mark the new value as invalid */
         //     $this->_dataSaveAllowed = false;
-		// 	throw new LocalizedException(__('The image file must have one of the following extensions: ' . implode(', ', $allowedExtensions)));
-		// }
+        //     throw new LocalizedException(__('The image file must have one of the following extensions: ' . implode(', ', $allowedExtensions)));
+        // }
 
         return $this;
     }
@@ -58,21 +78,19 @@ class LogoUrl extends Value
      */
     private function fileExists($url)
     {
-        $valid = true;
+        $this->curl->setOptions([
+            CURLOPT_HEADER => 1,
+            CURLOPT_NOBODY => 1,
+            CURLOPT_RETURNTRANSFER => 1,
+            CURLOPT_FRESH_CONNECT => 1,
+        ]);
 
-        $c = curl_init();
-        curl_setopt($c, CURLOPT_URL, $url);
-        curl_setopt($c, CURLOPT_HEADER, 1);
-        curl_setopt($c, CURLOPT_NOBODY, 1);
-        curl_setopt($c, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($c, CURLOPT_FRESH_CONNECT, 1);
-        
-        if(!curl_exec($c)){
-            $valid = false;
+        $this->curl->get($url);
+
+        if ($this->curl->getStatus() >= 400) {
+            return false;
         }
 
-        curl_close($c);
-
-        return $valid;
+        return true;
     }
 }

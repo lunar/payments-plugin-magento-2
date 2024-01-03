@@ -1,8 +1,5 @@
 <?php
-/**
- * Copyright © 2016 Magento. All rights reserved.
- * See COPYING.txt for license details.
- */
+
 namespace Lunar\Payment\Gateway\Response;
 
 use Magento\Payment\Gateway\Data\PaymentDataObjectInterface;
@@ -11,13 +8,13 @@ use Magento\Sales\Model\Order\Payment;
 
 class FraudHandler implements HandlerInterface
 {
-    const FRAUD_MSG_LIST = 'FRAUD_MSG_LIST';
+    private const FRAUD_MSG_LIST = 'FRAUD_MSG_LIST';
 
     /**
      * Handles fraud messages
      *
-     * @param array $handlingSubject
-     * @param array $response
+     * @param  array $handlingSubject
+     * @param  array $response
      * @return void
      */
     public function handle(array $handlingSubject, array $response)

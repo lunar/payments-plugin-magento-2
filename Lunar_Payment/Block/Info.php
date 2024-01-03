@@ -1,8 +1,5 @@
 <?php
-/**
- * Copyright © 2016 Magento. All rights reserved.
- * See COPYING.txt for license details.
- */
+
 namespace Lunar\Payment\Block;
 
 use Magento\Framework\Phrase;
@@ -14,7 +11,7 @@ class Info extends ConfigurableInfo
     /**
      * Returns label
      *
-     * @param string $field
+     * @param  string $field
      * @return Phrase
      */
     protected function getLabel($field)
@@ -25,15 +22,15 @@ class Info extends ConfigurableInfo
     /**
      * Returns value view
      *
-     * @param string $field
-     * @param string $value
+     * @param  string $field
+     * @param  string $value
      * @return string | Phrase
      */
     protected function getValueView($field, $value)
     {
         switch ($field) {
-            case FraudHandler::FRAUD_MSG_LIST:
-                return implode('; ', $value);
+        case FraudHandler::FRAUD_MSG_LIST:
+            return implode('; ', $value);
         }
         return parent::getValueView($field, $value);
     }

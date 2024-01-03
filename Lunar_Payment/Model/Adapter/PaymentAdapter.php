@@ -7,12 +7,15 @@ use Magento\Framework\App\RequestInterface;
 use Magento\Sales\Model\OrderRepository;
 use Magento\Store\Model\StoreManagerInterface;
 use Magento\Store\Model\ScopeInterface;
+use Magento\Quote\Api\CartRepositoryInterface;
+use Magento\Checkout\Model\Cart;
 
 use Lunar\Payment\lib\Lunar\Client;
 use Lunar\Payment\lib\Lunar\Transaction;
 
 /**
  * Class PaymentAdapter
+ *
  * @codeCoverageIgnore
  * Adapter used for capture/refund/void an order
  */
@@ -22,20 +25,26 @@ class PaymentAdapter
     private $request;
     private $orderRepository;
     private $storeManager;
+    private $cartRepository;
+    private $cart;
     private $order = null;
     private $paymentMethodCode = '';
-    
+
     public function __construct(
-            ScopeConfigInterface $scopeConfig,
-            RequestInterface $request,
-            OrderRepository $orderRepository,
-            StoreManagerInterface $storeManager
-    ){
+        ScopeConfigInterface $scopeConfig,
+        RequestInterface $request,
+        OrderRepository $orderRepository,
+        StoreManagerInterface $storeManager,
+        CartRepositoryInterface $cartRepository,
+        Cart $cart
+    ) {
 
         $this->scopeConfig = $scopeConfig;
         $this->request = $request;
         $this->orderRepository = $orderRepository;
         $this->storeManager = $storeManager;
+        $this->cartRepository = $cartRepository;
+        $this->cart = $cart;
 
         if ($orderId = $this->request->getParam('order_id')) {
             $this->order = $this->orderRepository->get($orderId);
@@ -54,23 +63,23 @@ class PaymentAdapter
     {
         $transactionMode = $this->getStoreConfigValue('transaction_mode');
 
-        /** 
+        /**
          * @TODO get only app_key after complete hosted checkout migration
          */
         if ($this->getStoreConfigValue('app_key')) {
             $privateKey = $this->getStoreConfigValue('app_key');
         } else {
             $privateKey = "test" == $transactionMode
-                            ? $this->getStoreConfigValue('test_app_key')
-                            : $this->getStoreConfigValue('live_app_key');
+                ? $this->getStoreConfigValue('test_app_key')
+                : $this->getStoreConfigValue('live_app_key');
         }
 
         Client::setKey($privateKey, $this->paymentMethodCode);
     }
 
     /**
-     * @param string $transactionId
-     * @param array $data
+     * @param  string $transactionId
+     * @param  array  $data
      * @return array
      */
     public function capture($transactionId, array $data)
@@ -79,8 +88,8 @@ class PaymentAdapter
     }
 
     /**
-     * @param string $transactionId
-     * @param array $data
+     * @param  string $transactionId
+     * @param  array  $data
      * @return array
      */
     public function void($transactionId, array $data)
@@ -89,8 +98,8 @@ class PaymentAdapter
     }
 
     /**
-     * @param string $transactionId
-     * @param array $data
+     * @param  string $transactionId
+     * @param  array  $data
      * @return array
      */
     public function refund($transactionId, array $data)
@@ -108,27 +117,31 @@ class PaymentAdapter
         $configPath = 'payment/' . $this->paymentMethodCode . '/' . $configField;
 
         return $this->scopeConfig->getValue(
-            /*path*/ $configPath,
-            /*scopeType*/ ScopeInterface::SCOPE_STORE,
-            /*scopeCode*/ $this->getStoreId()
+            /*path*/
+            $configPath,
+            /*scopeType*/
+            ScopeInterface::SCOPE_STORE,
+            /*scopeCode*/
+            $this->getStoreId()
         );
     }
 
     /**
-     * 
+     *
      */
     private function getStoreId($order = null)
     {
         if ($this->order) {
             return $this->order->getStore()->getId();
         }
-        
+
         /** FRONTEND order processing flow. */
         return $this->storeManager->getStore()->getId();
     }
 
     /**
      * Get payment method code from either quote or order
+     *
      * @return string
      */
     private function setPaymentMethodCode()
@@ -149,24 +162,18 @@ class PaymentAdapter
         return $this->paymentMethodCode = $this->getPaymentMethodFromQuote();
     }
 
-	/**
-	 *
-	 */
-	private function getPaymentMethodFromQuote()
-	{
-        $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
-
+    /**
+     *
+     */
+    private function getPaymentMethodFromQuote()
+    {
         if ($quoteId = $this->request->getParam('multishipping_quote_id')) {
-            /** @var \Magento\Quote\Api\CartRepositoryInterface $cartRepo */
-            $cartRepo = $objectManager->get('\Magento\Quote\Api\CartRepositoryInterface');
             /** @var \Magento\Quote\Model\Quote $quote */
-            $quote = $cartRepo->get($quoteId);
+            $quote = $this->cartRepository->get($quoteId);
 
             return $quote->getPayment()->getMethod();
         }
-	
-        $cart = $objectManager->get('\Magento\Checkout\Model\Cart');		
-        return $cart->getQuote()->getPayment()->getMethod();
-	}
 
+        return $this->cart->getQuote()->getPayment()->getMethod();
+    }
 }

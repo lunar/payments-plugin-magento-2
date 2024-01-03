@@ -18,26 +18,27 @@
 <p id="lunarpaymenthosted_logs_message">this is a message</p>
 
 
-<script type="text/javascript">
-
+<script>
   let lunarHostedExportLogsButton = jQuery(`#lunarpaymenthosted_logs_export_button`);
   let lunarHostedDeleteLogsButton = jQuery(`#lunarpaymenthosted_logs_delete_button`);
   let lunarHostedLogsMessage = jQuery(`#lunarpaymenthosted_logs_message`);
   let lunarHostedLogsEnabledSelector = jQuery(`#payment_us_lunarpaymenthosted_enable_logs`);
 
   function download(filename, content) {
-      var a = document.createElement('a');
-      a.setAttribute('href', 'data:application/zip;base64, ' + content);
-      a.setAttribute('download', filename);
-      a.click();
+    var a = document.createElement('a');
+    a.setAttribute('href', 'data:application/zip;base64, ' + content);
+    a.setAttribute('download', filename);
+    a.click();
   }
 
   jQuery.ajax({
     url: "/lunar/index/Log",
     type: 'POST',
     dataType: 'text',
-    data: { "writable": 1 },
-    success: function (data) {
+    data: {
+      "writable": 1
+    },
+    success: function(data) {
       const response = JSON.parse(data);
       if (response.writable) {
         jQuery("lunarpaymenthosted_not_writable").remove();
@@ -45,7 +46,7 @@
       } else {
         lunarHostedLogsEnabledSelector.val("0");
         lunarHostedLogsEnabledSelector.attr("disabled", true);
-        lunarHostedLogsEnabledSelector.after('<p id="lunarpaymenthosted_not_writable" class="note" style="color: red; margin-top: 8px;">Cannot enable logs right now<br />Please make sure the following directory is writable:<br /><pre><small>'+response.dir+'</small></pre></p>');
+        lunarHostedLogsEnabledSelector.after('<p id="lunarpaymenthosted_not_writable" class="note" style="color: red; margin-top: 8px;">Cannot enable logs right now <br>Please make sure the following directory is writable: <br><pre><small>' + response.dir + '</small></pre></p>');
       }
     },
   });
@@ -55,8 +56,10 @@
       url: "/lunar/index/Log",
       type: 'POST',
       dataType: 'text',
-      data: { "hasLogs": 1 },
-      success: function (data) {
+      data: {
+        "hasLogs": 1
+      },
+      success: function(data) {
         if (!data) {
           lunarHostedExportLogsButton.attr("disabled", true);
           lunarHostedDeleteLogsButton.attr("disabled", true);
@@ -86,8 +89,11 @@
       url: "/lunar/index/Log",
       type: 'POST',
       dataType: 'text',
-      data: { "delete": 1  , "method_code": "lunarpaymenthosted"},
-      success: function (data) {
+      data: {
+        "delete": 1,
+        "method_code": "lunarpaymenthosted"
+      },
+      success: function(data) {
         lunarHostedLogsMessage.html("Logs deleted");
         lunarHostedDeleteLogsButton.html("Delete logs");
 
@@ -106,8 +112,11 @@
       url: "/lunar/index/Log",
       type: 'POST',
       dataType: 'text',
-      data: { "export": 1 , "method_code": "lunarpaymenthosted"},
-      success: function (data) {
+      data: {
+        "export": 1,
+        "method_code": "lunarpaymenthosted"
+      },
+      success: function(data) {
         download("lunarPaymentHostedLogs.zip", data);
 
         lunarHostedExportLogsButton.attr("disabled", false);

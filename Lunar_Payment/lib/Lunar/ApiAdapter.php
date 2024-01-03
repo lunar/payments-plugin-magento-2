@@ -1,13 +1,15 @@
 <?php
+
 namespace Lunar\Payment\lib\Lunar;
+
 /**
  * Class ApiAdapter
+ *
  * @package Lunar
  * The adapter class taking care of the calls to the api.
  *
  * The purpose of this is to abstract the requests
  * so that this can be changed depending on the environment.
- *
  */
 if (!class_exists('Lunar\\ApiAdapter')) {
     class ApiAdapter
@@ -42,10 +44,12 @@ if (!class_exists('Lunar\\ApiAdapter')) {
         }
 
         /**
-         * @param $url this is required, do not use the full url,
-         * only prepend the params eg: transactions/' . $transactionId . '/captures'
+         * @param $url  this is required, do not use the full url,
+         *              only prepend the params eg: transactions/'
+         *              . $transactionId . '/captures'
+
          * @param $data this is optional
-         * Actual call to the api via curl.
+         *              Actual call to the api via curl.
          *
          * @return bool|mixed
          */
@@ -57,26 +61,28 @@ if (!class_exists('Lunar\\ApiAdapter')) {
             $ch = curl_init();
             curl_setopt($ch, CURLOPT_URL, $url);
             curl_setopt($ch, CURLOPT_HEADER, false);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+            curl_setopt(
+                $ch, CURLOPT_HTTPHEADER, array(
                 'Accept: application/json',
                 'Content-Type: application/json',
                 'X-Client: PHP ' . phpversion()
-            ));
+                )
+            );
             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
             curl_setopt($ch, CURLOPT_USERPWD, ":" . $this->apiKey);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             //curl_setopt($ch,CURLOPT_FAILONERROR,true); // Line added by Arshad
             switch ($httpVerb) {
-                case 'post':
-                    curl_setopt($ch, CURLOPT_POST, true);
-                    if ($data) {
-                        $encoded = json_encode($data);
-                        curl_setopt($ch, CURLOPT_POSTFIELDS, $encoded);
-                    }
-                    break;
-                case 'get':
-                    // can add args here for future use
-                    break;
+            case 'post':
+                curl_setopt($ch, CURLOPT_POST, true);
+                if ($data) {
+                    $encoded = json_encode($data);
+                    curl_setopt($ch, CURLOPT_POSTFIELDS, $encoded);
+                }
+                break;
+            case 'get':
+                // can add args here for future use
+                break;
             }
             $result = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);

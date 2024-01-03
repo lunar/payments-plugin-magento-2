@@ -58,7 +58,7 @@ class MobilePayPayment implements ActionInterface
     private $invoiceSender;
     private $priceCurrencyInterface;
 
-    const REMOTE_URL = 'https://b.paylike.io';
+    private const REMOTE_URL = 'https://b.paylike.io';
 
     private string $mobilePayCode = ConfigProvider::MOBILEPAY_CODE;
     private $hintsOrderKey = 'lunarmobilepay_hints';
@@ -85,7 +85,6 @@ class MobilePayPayment implements ActionInterface
         Http $response,
         ManagerInterface $messageManager,
         OrderStatusHistoryRepositoryInterface $orderStatusRepository,
-
         CollectionFactory $invoiceCollectionFactory,
         InvoiceService $invoiceService,
         TransactionFactory $transactionFactory,
@@ -132,13 +131,15 @@ class MobilePayPayment implements ActionInterface
             $this->args['amount'] = $configData['amount'];
             $this->args['custom'] = $configData['custom'];
 
-            /** Set order Id instead of quote id, when after_order flow */
+            /**
+* 
+ * Set order Id instead of quote id, when after_order flow 
+*/
             unset($this->args['custom']['quoteId']);
             $this->args['custom'] = array_merge(['orderId' => $this->order->getIncrementId()], $this->args['custom']);
 
             $this->referer = $baseUrl . 'lunar/index/MobilePayPayment/?order_id=' . $this->orderId;
-        }
-        else {
+        } else {
             $this->args = $requestInterface->getParam('args');
         }
     }
@@ -165,7 +166,7 @@ class MobilePayPayment implements ActionInterface
 
         $this->authorizationId = $response['data']['authorizationId'] ?? '';
 
-        if($this->authorizationId) {
+        if ($this->authorizationId) {
             /**
              * Before order, send json response to front component
              */
@@ -177,7 +178,10 @@ class MobilePayPayment implements ActionInterface
              * After order, redirect to success after set trxid on quote payment and capture if instant mode.
              */
 
-            /** Update info on order payment */
+            /**
+* 
+ * Update info on order payment 
+*/
             $this->setTxnIdOnOrderPayment();
             $this->updateLastOrderStatusHistory();
 
@@ -185,8 +189,7 @@ class MobilePayPayment implements ActionInterface
             if ($this->isInstantMode) {
                 // the order state will be changed after invoice creation
                 $this->createInvoiceForOrder();
-            }
-            else {
+            } else {
                 /**
                  * @see https://magento.stackexchange.com/questions/225524/magento-2-show-pending-payment-order-in-store-front/280227#280227
                  * Important note for Pending Payments
@@ -206,7 +209,7 @@ class MobilePayPayment implements ActionInterface
             return $this->response->setRedirect($dataRedirectUrl);
         }
 
-        if (($response['data']['type'] ?? '') === 'redirect' ) {
+        if (($response['data']['type'] ?? '') === 'redirect') {
             $dataRedirectUrl = $response['data']['url'];
             return $this->response->setRedirect($dataRedirectUrl);
         }
@@ -214,8 +217,7 @@ class MobilePayPayment implements ActionInterface
         /**
          * Redirect to error page if response is iframe & checkout mode is after_order
          */
-        if (
-            ! $this->beforeOrder
+        if (!$this->beforeOrder
             && isset($response['data']['type'])
             && ($response['data']['type'] === 'iframe')
         ) {
@@ -242,8 +244,11 @@ class MobilePayPayment implements ActionInterface
         $orderPayment->setLastTransId($this->authorizationId);
         $orderPayment->save();
 
-        /** Manually insert transaction if after_order & delayed mode. */
-        if (! $this->beforeOrder && ! $this->isInstantMode) {
+        /**
+* 
+ * Manually insert transaction if after_order & delayed mode. 
+*/
+        if (!$this->beforeOrder && !$this->isInstantMode) {
             $this->insertNewTransactionForPayment($orderPayment);
         }
     }
@@ -255,14 +260,14 @@ class MobilePayPayment implements ActionInterface
     {
         /**
          * @TODO can we use authorize() from Payment model ? (inherited by our model)
-         * @see vendor\magento\module-sales\Model\Order\Payment.php L1134
+         * @see  vendor\magento\module-sales\Model\Order\Payment.php L1134
          * in that case we can remove some of the methods here and use only one (?)
          */
         $orderPayment->setTransactionId($this->authorizationId);
         $orderPayment->setIsTransactionClosed(0);
         $orderPayment->setShouldCloseParentTransaction(0);
         //  $paymentTransaction = $orderPayment->_addTransaction('authorization', null, true); // true - failsafe
-         $paymentTransaction = $orderPayment->addTransaction(TransactionInterface::TYPE_AUTH);
+        $paymentTransaction = $orderPayment->addTransaction(TransactionInterface::TYPE_AUTH);
     }
 
     /**
@@ -272,40 +277,53 @@ class MobilePayPayment implements ActionInterface
     {
         $statusHistories = $this->order->getStatusHistoryCollection()->toArray()['items'];
 
-        /** Get only last created history */
+        /**
+* 
+ * Get only last created history 
+*/
         $orderHistory = $statusHistories[0] ?? null;
 
-        if ( ! $orderHistory) {
+        if (!$orderHistory) {
             return;
         }
 
         $commentContentModified = str_replace('trxid_placeholder', $this->authorizationId, $orderHistory['comment'] ?? '');
 
-        
-        /** @var \Magento\Sales\Model\Order\Status\History $historyItem */
+
+        /**
+* 
+         *
+ * @var \Magento\Sales\Model\Order\Status\History $historyItem 
+*/
         $historyItem = $this->orderStatusRepository->get($orderHistory['entity_id']);
 
 
-        if ( ! $historyItem) {
+        if (!$historyItem) {
             return;
         }
 
-        /** Delete last order status history if conditions met. */
-        if ( ! $this->beforeOrder) {
+        /**
+* 
+ * Delete last order status history if conditions met. 
+*/
+        if (!$this->beforeOrder) {
             if ($this->isInstantMode) {
                 $historyItem->delete();
                 return;
             } else {
                 $baseGrandTotal = $this->order->getBaseGrandTotal();
                 $formattedPrice = $this->priceCurrencyInterface->format(
-                    $baseGrandTotal, 
-                    $includeContainer = false, 
-                    $precision = 2, 
+                    $baseGrandTotal,
+                    $includeContainer = false,
+                    $precision = 2,
                     $scope = null,
                     $currency = $this->order->getBaseCurrencyCode()
                 );
 
-                /** The price will be displayed in base currency. */
+                /**
+* 
+ * The price will be displayed in base currency. 
+*/
                 $commentContentModified = 'Authorized amount of ' . $formattedPrice . '. Transaction ID: "' . $this->authorizationId . '".';
                 $historyItem->setIsCustomerNotified(0); // @TODO check this (is notified? should we notify?)
             }
@@ -314,7 +332,6 @@ class MobilePayPayment implements ActionInterface
         $historyItem->setStatus(Order::STATE_PENDING_PAYMENT);
         $historyItem->setComment($commentContentModified);
         $historyItem->save();
-
     }
 
     /**
@@ -327,7 +344,7 @@ class MobilePayPayment implements ActionInterface
         if ('test' == $this->getStoreConfigValue('transaction_mode')) {
             $publicKey = $this->getStoreConfigValue('test_public_key');
             $this->args['test'] = new \stdClass();
-        }  else {
+        } else {
             // Unset 'test' param for live mode
             unset($this->args['test']);
         }
@@ -342,7 +359,10 @@ class MobilePayPayment implements ActionInterface
         if ($this->referer) {
             $returnUrl = $this->referer;
         } else {
-            /** Checkout payment step url */
+            /**
+* 
+ * Checkout payment step url 
+*/
             $returnUrl = $this->redirect->getRefererUrl() . '/#payment'; // or $this->redirect->getRedirectUrl();
         }
 
@@ -361,11 +381,11 @@ class MobilePayPayment implements ActionInterface
     private function mobilePayPayment()
     {
         /**
-        * Request
-        */
+         * Request
+         */
         $response = $this->request('/payments');
 
-        if ( ! $response) {
+        if (!$response) {
             return $this->error('There was an error. Please try again later');
         }
 
@@ -442,10 +462,10 @@ class MobilePayPayment implements ActionInterface
             return $this->error($response['message']);
         }
 
-        if ( ! isset($response['hints']) && isset($data['notBefore']) ) {
+        if (!isset($response['hints']) && isset($data['notBefore'])) {
             $notBefore = \DateTime::createFromFormat('Y-m-d\TH:i:s+', $response['notBefore']);
-			$now = new \DateTime();
-			$timeDiff = ($notBefore->getTimestamp() - $now->getTimestamp()) + 1; // add 1 second to account for miliseconds loss
+            $now = new \DateTime();
+            $timeDiff = ($notBefore->getTimestamp() - $now->getTimestamp()) + 1; // add 1 second to account for miliseconds loss
 
             if ($timeDiff > 0) {
                 sleep($timeDiff);
@@ -459,25 +479,22 @@ class MobilePayPayment implements ActionInterface
         $this->saveHintsOnOrder();
 
         switch ($challenge['type']) {
-            case 'fetch':
-            case 'poll':
-                return [];
-                break;
+        case 'fetch':
+        case 'poll':
+            return [];
 
-            case 'redirect':
-                $response['type'] = $challenge['type'];
-                // store hints for this order for 30 minutes
-                return $response;
-                break;
+        case 'redirect':
+            $response['type'] = $challenge['type'];
+            // store hints for this order for 30 minutes
+            return $response;
 
-            case 'iframe':
-            case 'background-iframe':
-                $response['type'] = $challenge['type'];
-                return $response;
-                break;
+        case 'iframe':
+        case 'background-iframe':
+            $response['type'] = $challenge['type'];
+            return $response;
 
-            default:
-                return $this->error('Unknown challenge type: ' . $challenge['type']);
+        default:
+            return $this->error('Unknown challenge type: ' . $challenge['type']);
         }
 
         return $response;
@@ -507,7 +524,10 @@ class MobilePayPayment implements ActionInterface
     {
         $this->logger->debug("Calling $path with hints: " . json_encode($this->args['hints'] ?? [], JSON_PRETTY_PRINT));
 
-        /** Unset some unnecessary args */
+        /**
+* 
+ * Unset some unnecessary args 
+*/
         unset(
             $this->args['title'],
             $this->args['locale'],
@@ -548,14 +568,15 @@ class MobilePayPayment implements ActionInterface
         array $params = []
     ) {
         try {
-            $guzzleClient = new GuzzleClient([
-                    'base_uri' => self::REMOTE_URL,
-                    'allow_redirects' => true,
-            ]);
+            $guzzleClient = new GuzzleClient(
+                [
+                'base_uri' => self::REMOTE_URL,
+                'allow_redirects' => true,
+                ]
+            );
 
             $response = $guzzleClient->request($requestMethod, $uriEndpoint, $params);
             $response = json_decode($response->getBody()->getContents(), true);
-
         } catch (GuzzleException $exception) {
             $response = ['error' => $exception->getMessage()];
         }
@@ -650,16 +671,25 @@ class MobilePayPayment implements ActionInterface
      */
     private function getStoreConfigValue($configKey)
     {
-        /** This is not imperative to be used. It works even without it */
+        /**
+* 
+ * This is not imperative to be used. It works even without it 
+*/
         $storeId = $this->storeManager->getStore()->getId();
 
-        /** "path" is composed based on etc/adminhtml/system.xml as "section_id/group_id/field_id" */
+        /**
+* 
+ * "path" is composed based on etc/adminhtml/system.xml as "section_id/group_id/field_id" 
+*/
         $configPath = 'payment/' . $this->mobilePayCode . '/' . $configKey;
 
         return $this->scopeConfig->getValue(
-            /*path*/ $configPath,
-            /*scopeType*/ ScopeInterface::SCOPE_STORE,
-            /*scopeCode*/ $storeId
+            /*path*/
+            $configPath,
+            /*scopeType*/
+            ScopeInterface::SCOPE_STORE,
+            /*scopeCode*/
+            $storeId
         );
     }
 

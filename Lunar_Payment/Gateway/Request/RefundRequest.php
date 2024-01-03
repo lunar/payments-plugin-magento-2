@@ -1,8 +1,5 @@
 <?php
-/**
- * Copyright © 2016 Magento. All rights reserved.
- * See COPYING.txt for license details.
- */
+
 namespace Lunar\Payment\Gateway\Request;
 
 use Magento\Framework\App\Request\Http;
@@ -28,7 +25,7 @@ class RefundRequest implements BuilderInterface
 
     /**
      * @param ConfigInterface $config
-     * @param Order $order
+     * @param Order           $order
      */
     public function __construct(
         ConfigInterface $config,
@@ -43,7 +40,7 @@ class RefundRequest implements BuilderInterface
     /**
      * Builds ENV request
      *
-     * @param array $buildSubject
+     * @param  array $buildSubject
      * @return array
      */
     public function build(array $buildSubject)

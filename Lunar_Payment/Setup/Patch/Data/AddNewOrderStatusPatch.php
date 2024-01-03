@@ -1,8 +1,4 @@
 <?php
-/**
- * Copyright © Magento, Inc. All rights reserved.
- * See COPYING.txt for license details.
- */
 
 namespace Lunar\Payment\Setup\Patch\Data;
 
@@ -16,6 +12,7 @@ use Magento\Framework\Setup\Patch\PatchRevertableInterface;
 /**
  * Add new Order Status to be applied to the order
  * For patches documentation:
+ *
  * @see https://devdocs.magento.com/guides/v2.4/extension-dev-guide/declarative-schema/data-patches.html
  */
 class AddNewOrderStatusPatch implements DataPatchInterface, PatchVersionInterface, PatchRevertableInterface
@@ -29,7 +26,7 @@ class AddNewOrderStatusPatch implements DataPatchInterface, PatchVersionInterfac
     /**
      * Custom Processing Order-Status code
      */
-    protected const ORDER_STATUS_PAYMENT_RECEIVED_CODE = 'payment_received';
+    public const ORDER_STATUS_PAYMENT_RECEIVED_CODE = 'payment_received';
 
     /**
      * Custom Processing Order-Status label
@@ -74,7 +71,7 @@ class AddNewOrderStatusPatch implements DataPatchInterface, PatchVersionInterfac
 
         $orderStatusData = [
             'status' => self::ORDER_STATUS_PAYMENT_RECEIVED_CODE,
-            'label' => __(self::ORDER_STATUS_PAYMENT_RECEIVED_LABEL),
+            'label' => self::ORDER_STATUS_PAYMENT_RECEIVED_LABEL,
         ];
 
         /**
@@ -113,10 +110,10 @@ class AddNewOrderStatusPatch implements DataPatchInterface, PatchVersionInterfac
     public function revert()
     {
         /**
-        * Here should go code that will revert all operations from `apply` method
-        * Please note, that some operations, like removing data from column, that is in role of foreign key reference
-        * is dangerous, because it can trigger ON DELETE statement
-        */
+         * Here should go code that will revert all operations from `apply` method
+         * Please note, that some operations, like removing data from column, that is in role of foreign key reference
+         * is dangerous, because it can trigger ON DELETE statement
+         */
 
         $this->moduleDataSetup->getConnection()->startSetup();
 
@@ -150,9 +147,9 @@ class AddNewOrderStatusPatch implements DataPatchInterface, PatchVersionInterfac
         return self::PATCH_VERSION;
     }
 
-   /**
-    * @inheritdoc
-    */
+    /**
+     * @inheritdoc
+     */
     public function getAliases()
     {
         /**
@@ -163,9 +160,9 @@ class AddNewOrderStatusPatch implements DataPatchInterface, PatchVersionInterfac
         return [];
     }
 
-   /**
-    * @inheritdoc
-    */
+    /**
+     * @inheritdoc
+     */
     public static function getDependencies()
     {
         /**

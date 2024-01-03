@@ -15,13 +15,14 @@ use Magento\Store\Model\ScopeInterface;
 use Magento\Sales\Api\Data\OrderStatusHistoryInterface;
 
 use Lunar\Payment\Model\Ui\ConfigProvider;
+use Lunar\Payment\Setup\Patch\Data\AddNewOrderStatusPatch;
 
 /**
  *
  */
 class MobilePayCheckoutAllSubmitAfterObserver implements ObserverInterface
 {
-    const LUNAR_MOBILEPAY_METHODS = [
+    private const LUNAR_MOBILEPAY_METHODS = [
         ConfigProvider::MOBILEPAY_CODE,
         // ConfigProvider::MOBILEPAY_HOSTED_CODE,
     ];
@@ -59,7 +60,7 @@ class MobilePayCheckoutAllSubmitAfterObserver implements ObserverInterface
 
     /**
      *
-     * @param Observer $observer
+     * @param  Observer $observer
      * @return $this
      */
     public function execute(Observer $observer)
@@ -76,11 +77,11 @@ class MobilePayCheckoutAllSubmitAfterObserver implements ObserverInterface
         $payment = $order->getPayment();
         $this->methodCode = $payment ? $payment->getMethod() : '';
 
-        if (!$payment || ! in_array($this->methodCode, self::LUNAR_MOBILEPAY_METHODS)) {
+        if (!$payment || !in_array($this->methodCode, self::LUNAR_MOBILEPAY_METHODS)) {
             return $this;
         }
 
-        $checkoutMode =  $this->scopeConfig->getValue('payment/' . $this->methodCode . '/checkout_mode', ScopeInterface::SCOPE_STORE);
+        $checkoutMode =  $this->getStoreConfigValue('checkout_mode');
 
         /** Perform redirect in after_order flow. */
         if ('after_order' == $checkoutMode) {
@@ -109,15 +110,13 @@ class MobilePayCheckoutAllSubmitAfterObserver implements ObserverInterface
      */
     private function processOrder(Order $order)
     {
-        $captureMode =  $this->scopeConfig->getValue('payment/' . $this->methodCode . '/capture_mode', ScopeInterface::SCOPE_STORE);
+        $captureMode =  $this->getStoreConfigValue('capture_mode');
 
         if ("instant" == $captureMode) {
-
             $this->createInvoiceForOrder($order);
-        }
-        elseif ("delayed" == $captureMode) {
-
-            $order->setState(Order::STATE_PROCESSING)->setStatus(Order::STATE_PENDING_PAYMENT);
+        } elseif ("delayed" == $captureMode) {
+            $order->setState(Order::STATE_PROCESSING)
+                ->setStatus(AddNewOrderStatusPatch::ORDER_STATUS_PAYMENT_RECEIVED_CODE);
             $order->save();
         }
     }
@@ -127,11 +126,11 @@ class MobilePayCheckoutAllSubmitAfterObserver implements ObserverInterface
      */
     private function createInvoiceForOrder($order)
     {
-        $invoiceEmailMode =  $this->scopeConfig->getValue('payment/' . $this->methodCode . '/invoice_email', ScopeInterface::SCOPE_STORE);
+        $invoiceEmailMode =  $this->getStoreConfigValue('invoice_email');
 
         try {
             $invoices = $this->invoiceCollectionFactory->create()
-                ->addAttributeToFilter('order_id', array('eq' => $order->getId()));
+                ->addAttributeToFilter('order_id', ['eq' => $order->getId()]);
             $invoices->getSelect()->limit(1);
 
             if ((int)$invoices->count() !== 0) {
@@ -147,7 +146,8 @@ class MobilePayCheckoutAllSubmitAfterObserver implements ObserverInterface
             $invoice->register();
             $invoice->getOrder()->setCustomerNoteNotify(false);
             $invoice->getOrder()->setIsInProcess(true);
-            $transactionSave = $this->transactionFactory->create()->addObject($invoice)->addObject($invoice->getOrder());
+            $transactionSave = $this->transactionFactory->create();
+            $transactionSave = $transactionSave->addObject($invoice)->addObject($invoice->getOrder());
             $transactionSave->save();
 
             if (!$invoice->getEmailSent() && $invoiceEmailMode == 1) {
@@ -158,9 +158,17 @@ class MobilePayCheckoutAllSubmitAfterObserver implements ObserverInterface
                 }
             }
         } catch (\Exception $e) {
-            $order->addStatusHistoryComment('Exception message: ' . $e->getMessage(), false); // addStatusHistoryComment() is deprecated !
-            $order->save(); // save() is deprecated !
+            $order->addStatusHistoryComment('Exception message: ' . $e->getMessage(), false);
+            $order->save();
             return null;
         }
+    }
+
+    /**
+     *
+     */
+    private function getStoreConfigValue(string $key)
+    {
+        return   $this->scopeConfig->getValue("payment/{$this->methodCode}/$key", ScopeInterface::SCOPE_STORE);
     }
 }
