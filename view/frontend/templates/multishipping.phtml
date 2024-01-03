@@ -4,22 +4,29 @@
 $lunarCheckoutConfig = $block->getCheckoutData()->getSerializedCheckoutConfigs();
 $lunarPaymentMethod = $block->getSelectedMethodCode();
 
+/** @var \Magento\Framework\View\Helper\SecureHtmlRenderer $secureRenderer */
+
 /**
  * Insert component script code to page if payment method match
  */
 if ('lunarpaymentmethod' === $lunarPaymentMethod) {
 
     /** Set checkout data as window variables. */
-    echo '<script type="text/javascript">window.checkoutConfig = ' . $lunarCheckoutConfig . '</script>';
-    echo '<script type="text/javascript">window.paymentMethod = "' . $lunarPaymentMethod . '"</script>';
+    $scriptString = "window.checkoutConfig = '{$block->escapeJs($lunarCheckoutConfig)}';";
+    $scriptString .= "window.paymentMethod = '{$block->escapeJs($lunarPaymentMethod)}';";
+    /* @noEscape */ $secureRenderer->renderTag('script', [], $scriptString, false);
 
     /** Insert multishipping component */
-    echo '<script src="' . $block->getViewFileUrl('Lunar_Payment::js/view/payment/lunarpaymentmethod/multishipping.js') . '"></script>';
+    echo /* @noEscape */ $secureRenderer->renderTag('script', [
+        'src' => $block->getViewFileUrl('Lunar_Payment::js/view/payment/lunarpaymentmethod/multishipping.js'),
+    ], null, false);
 }
 
 /** HOSTED CHECKOUT */
 if ('lunarpaymenthosted' === $lunarPaymentMethod || 'lunarmobilepayhosted' === $lunarPaymentMethod) {
-    echo '<script src="' . $block->getViewFileUrl('Lunar_Payment::js/view/payment/hostedcheckout/multishipping.js') . '"></script>';
+    echo /* @noEscape */ $secureRenderer->renderTag('script', [
+        'src' => $block->getViewFileUrl('Lunar_Payment::js/view/payment/hostedcheckout/multishipping.js'),
+    ], null, false);
 }
 
 ?>

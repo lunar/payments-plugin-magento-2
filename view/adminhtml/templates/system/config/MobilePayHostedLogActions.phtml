@@ -16,26 +16,28 @@
 <p id="lunarmobilepayhosted_logs_message">this is a message</p>
 
 
-<script type="text/javascript">
-
+<script>
   let mobilepayHostedExportLogsButton = jQuery(`#lunarmobilepayhosted_logs_export_button`);
   let mobilepayHostedDeleteLogsButton = jQuery(`#lunarmobilepayhosted_logs_delete_button`);
   let mobilepayHostedLogsMessage = jQuery(`#lunarmobilepayhosted_logs_message`);
   let mobilepayHostedLogsEnabledSelector = jQuery(`#payment_us_lunarmobilepayhosted_enable_logs`);
 
   function download(filename, content) {
-      var a = document.createElement('a');
-      a.setAttribute('href', 'data:application/zip;base64, ' + content);
-      a.setAttribute('download', filename);
-      a.click();
+    var a = document.createElement('a');
+    a.setAttribute('href', 'data:application/zip;base64, ' + content);
+    a.setAttribute('download', filename);
+    a.click();
   }
 
   jQuery.ajax({
     url: "/lunar/index/Log",
     type: 'POST',
     dataType: 'text',
-    data: { "writable": 1 , "method_code": "lunarmobilepayhosted"},
-    success: function (data) {
+    data: {
+      "writable": 1,
+      "method_code": "lunarmobilepayhosted"
+    },
+    success: function(data) {
       const response = JSON.parse(data);
       if (response.writable) {
         jQuery("#lunarmobilepayhosted_not_writable").remove();
@@ -43,7 +45,7 @@
       } else {
         mobilepayHostedLogsEnabledSelector.val("0");
         mobilepayHostedLogsEnabledSelector.attr("disabled", true);
-        mobilepayHostedLogsEnabledSelector.after('<p id="lunarmobilepayhosted_not_writable" class="note" style="color: red; margin-top: 8px;">Cannot enable logs right now<br />Please make sure the following directory is writable:<br /><pre><small>'+response.dir+'</small></pre></p>');
+        mobilepayHostedLogsEnabledSelector.after('<p id="lunarmobilepayhosted_not_writable" class="note" style="color: red; margin-top: 8px;">Cannot enable logs right now <br>Please make sure the following directory is writable: <br><pre><small>' + response.dir + '</small></pre></p>');
       }
     },
   });
@@ -53,8 +55,11 @@
       url: "/lunar/index/Log",
       type: 'POST',
       dataType: 'text',
-      data: { "hasLogs": 1  , "method_code": "lunarmobilepayhosted"},
-      success: function (data) {
+      data: {
+        "hasLogs": 1,
+        "method_code": "lunarmobilepayhosted"
+      },
+      success: function(data) {
         if (!data) {
           mobilepayHostedExportLogsButton.attr("disabled", true);
           mobilepayHostedDeleteLogsButton.attr("disabled", true);
@@ -84,8 +89,11 @@
       url: "/lunar/index/Log",
       type: 'POST',
       dataType: 'text',
-      data: { "delete": 1  , "method_code": "lunarmobilepayhosted"},
-      success: function (data) {
+      data: {
+        "delete": 1,
+        "method_code": "lunarmobilepayhosted"
+      },
+      success: function(data) {
         mobilepayHostedLogsMessage.html("Logs deleted");
         mobilepayHostedDeleteLogsButton.html("Delete logs");
 
@@ -104,8 +112,11 @@
       url: "/lunar/index/Log",
       type: 'POST',
       dataType: 'text',
-      data: { "export": 1  , "method_code": "lunarmobilepayhosted"},
-      success: function (data) {
+      data: {
+        "export": 1,
+        "method_code": "lunarmobilepayhosted"
+      },
+      success: function(data) {
         download("lunarMobilepayHostedLogs.zip", data);
 
         mobilepayHostedExportLogsButton.attr("disabled", false);

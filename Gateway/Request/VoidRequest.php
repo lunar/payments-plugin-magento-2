@@ -1,8 +1,5 @@
 <?php
-/**
- * Copyright © 2016 Magento. All rights reserved.
- * See COPYING.txt for license details.
- */
+
 namespace Lunar\Payment\Gateway\Request;
 
 use Magento\Payment\Gateway\ConfigInterface;
@@ -25,7 +22,7 @@ class VoidRequest implements BuilderInterface
 
     /**
      * @param ConfigInterface $config
-     * @param Order $order
+     * @param Order           $order
      */
     public function __construct(
         ConfigInterface $config,
@@ -38,7 +35,7 @@ class VoidRequest implements BuilderInterface
     /**
      * Builds ENV request
      *
-     * @param array $buildSubject
+     * @param  array $buildSubject
      * @return array
      */
     public function build(array $buildSubject)

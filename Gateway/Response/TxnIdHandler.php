@@ -1,8 +1,5 @@
 <?php
-/**
- * Copyright © 2016 Magento. All rights reserved.
- * See COPYING.txt for license details.
- */
+
 namespace Lunar\Payment\Gateway\Response;
 
 use Magento\Payment\Gateway\Data\PaymentDataObjectInterface;
@@ -14,7 +11,7 @@ use Magento\Sales\Model\Order\Payment;
 
 class TxnIdHandler implements HandlerInterface
 {
-    const TXN_ID = 'TXN_ID';
+    private const TXN_ID = 'TXN_ID';
 
     protected $_invoiceService;
 
@@ -29,8 +26,7 @@ class TxnIdHandler implements HandlerInterface
         Logger $logger,
         InvoiceService $invoiceService,
         Order $order
-    )
-    {
+    ) {
         $this->logger = $logger;
         $this->_invoiceService = $invoiceService;
         $this->order = $order;
@@ -39,8 +35,8 @@ class TxnIdHandler implements HandlerInterface
     /**
      * Handles transaction id
      *
-     * @param array $handlingSubject
-     * @param array $response
+     * @param  array $handlingSubject
+     * @param  array $response
      * @return void
      */
     public function handle(array $handlingSubject, array $response)
@@ -53,28 +49,24 @@ class TxnIdHandler implements HandlerInterface
 
         /** @var PaymentDataObjectInterface $paymentDO */
         $paymentDO = $handlingSubject['payment'];
-        
+
         /** @var Payment $payment */
         $payment = $paymentDO->getPayment();
 
-        if(isset($response['TXN_TYPE'])){
+        if (isset($response['TXN_TYPE'])) {
 
             $this->logger->debug(["txnidhandler: " => $response['TXN_TYPE']]);
 
-            if($response['TXN_TYPE'] == "void" || $response['TXN_TYPE'] == "refund"){
+            if ($response['TXN_TYPE'] == "void" || $response['TXN_TYPE'] == "refund") {
                 $transactionid = $response[self::TXN_ID] . "-" . $response['TXN_TYPE'];
                 $payment->setTransactionId($transactionid);
                 $payment->setIsTransactionClosed(true);
                 $payment->setShouldCloseParentTransaction(true);
-            }
-
-            else{
+            } else {
                 $payment->setTransactionId($response[self::TXN_ID]);
                 $payment->setIsTransactionClosed(false);
             }
-        }
-
-        else{
+        } else {
             $this->logger->debug(["txnidhandler: " => "not set"]);
             $payment->setTransactionId($response[self::TXN_ID]);
             $payment->setIsTransactionClosed(false);

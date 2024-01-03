@@ -24,8 +24,8 @@ class GetOrderId implements ActionInterface
         RequestInterface $requestInterface,
         CartRepositoryInterface $cartRepositoryInterface
     ) {
-		$this->jsonFactory 			= $jsonFactory;
-		$this->requestInterface 	= $requestInterface;
+        $this->jsonFactory             = $jsonFactory;
+        $this->requestInterface     = $requestInterface;
         $this->cartRepositoryInterface = $cartRepositoryInterface;
     }
 
@@ -36,14 +36,14 @@ class GetOrderId implements ActionInterface
     {
         $quoteId = $this->requestInterface->getParams()['quote_id'] ?? '';
 
-		if (!$quoteId) {
+        if (!$quoteId) {
             return $this->jsonFactory->create()->setData(['error' => 'No quote ID provided.']);
         }
 
         $quote = $this->cartRepositoryInterface->get($quoteId);
 
         $objectManager = ObjectManager::getInstance();
-		$orderObject = $objectManager->get('Magento\Sales\Model\Order');
+        $orderObject = $objectManager->get(\Magento\Sales\Model\Order::class);
 
         $order = $orderObject->loadByIncrementId($quote->getReservedOrderId());
 

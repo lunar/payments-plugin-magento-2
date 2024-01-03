@@ -1,16 +1,17 @@
 <?php
+
 namespace Lunar\Payment\lib\Lunar;
 
 use Lunar\Lunar;
 
 /**
  * Class LunarHostedApiAdapter
+ *
  * @package Lunar
  * The adapter class taking care of the calls to the api.
  *
  * The purpose of this is to abstract the requests
  * so that this can be changed depending on the environment.
- *
  */
 if (!class_exists('Lunar\\LunarHostedApiAdapter')) {
     class LunarHostedApiAdapter
@@ -37,12 +38,13 @@ if (!class_exists('Lunar\\LunarHostedApiAdapter')) {
         /**
          * Place request via Lunar php sdk
          * The $url param is kept for compatibility with lib\Lunar\Transaction class
+         *
          * @TODO adjust this method when the hosted transition will be completed
          */
         public function request($url, $data = null)
         {
             $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
-            $cookieManager = $objectManager->get('\Magento\Framework\Stdlib\CookieManagerInterface');
+            $cookieManager = $objectManager->get(\Magento\Framework\Stdlib\CookieManagerInterface::class);
 
             $testMode = !!$cookieManager->getCookie('lunar_testmode');
 
@@ -51,12 +53,12 @@ if (!class_exists('Lunar\\LunarHostedApiAdapter')) {
             $data = $data['lunarHosted']; // set in AbstractTransaction class
 
             switch (true) {
-                case strstr($url, 'capture'):
-                    return $lunarApiClient->payments()->capture($data['id'], $data);
-                case strstr($url, 'refund'):
-                    return $lunarApiClient->payments()->refund($data['id'], $data);
-                case strstr($url, 'void'):
-                    return $lunarApiClient->payments()->cancel($data['id'], $data);
+            case strstr($url, 'capture'):
+                return $lunarApiClient->payments()->capture($data['id'], $data);
+            case strstr($url, 'refund'):
+                return $lunarApiClient->payments()->refund($data['id'], $data);
+            case strstr($url, 'void'):
+                return $lunarApiClient->payments()->cancel($data['id'], $data);
             }
         }
     }

@@ -1,8 +1,5 @@
 <?php
-/**
- * Copyright © 2016 Magento. All rights reserved.
- * See COPYING.txt for license details.
- */
+
 namespace Lunar\Payment\Gateway\Http;
 
 use Magento\Payment\Gateway\Http\TransferBuilder;
@@ -28,7 +25,7 @@ class TransferFactory implements TransferFactoryInterface
     /**
      * Builds gateway transfer object
      *
-     * @param array $request
+     * @param  array $request
      * @return TransferInterface
      */
     public function create(array $request)

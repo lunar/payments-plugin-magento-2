@@ -1,8 +1,5 @@
 <?php
-/**
- * Copyright © 2016 Magento. All rights reserved.
- * See COPYING.txt for license details.
- */
+
 namespace Lunar\Payment\Gateway\Request;
 
 use Magento\Checkout\Model\Cart;
@@ -26,7 +23,7 @@ class AuthorizationRequest implements BuilderInterface
 
     /**
      * @param ConfigInterface $config
-     * @param Cart $cart
+     * @param Cart            $cart
      */
     public function __construct(
         ConfigInterface $config,
@@ -39,7 +36,7 @@ class AuthorizationRequest implements BuilderInterface
     /**
      * Builds ENV request
      *
-     * @param array $buildSubject
+     * @param  array $buildSubject
      * @return array
      */
     public function build(array $buildSubject)

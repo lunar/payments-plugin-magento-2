@@ -9,24 +9,21 @@ use Magento\Sales\Model\Order;
 use Lunar\Payment\Model\Ui\ConfigProvider;
 
 /**
- * Class HostedCheckoutAllSubmitAfterObserver
+ *
  */
 class HostedCheckoutAllSubmitAfterObserver implements ObserverInterface
 {
-    private $storeManager;
-    private $responseFactory;
+    private $orderRepository;
 
     public function __construct(
-        \Magento\Store\Model\StoreManagerInterface $storeManager,
-        \Magento\Framework\App\ResponseFactory $responseFactory
+        \Magento\Sales\Model\OrderRepository $orderRepository
     ) {
-        $this->storeManager = $storeManager;
-        $this->responseFactory = $responseFactory;
+        $this->orderRepository = $orderRepository;
     }
 
     /**
      *
-     * @param Observer $observer
+     * @param  Observer $observer
      * @return $this
      */
     public function execute(Observer $observer)
@@ -38,21 +35,18 @@ class HostedCheckoutAllSubmitAfterObserver implements ObserverInterface
 
             $firstOrder = $orders[0]; 
 
-            if ( ! in_array($firstOrder->getPayment()->getMethod(), ConfigProvider::LUNAR_HOSTED_METHODS)) {
+            if (! in_array($firstOrder->getPayment()->getMethod(), ConfigProvider::LUNAR_HOSTED_METHODS)) {
                 return;
             }
 
-
+            /** @var \Magento\Sales\Api\Data\OrderInterface $order */
             foreach ($orders as $order) {
                 $order->setState(Order::STATE_NEW)->setStatus('pending');
-                $order->save();
+                $this->orderRepository->save($order);
             }
-
-            $redirectUrl = $this->storeManager->getStore()->getBaseUrl()
-                            . '/lunar/index/HostedCheckout/?multishipping=1&quote_id=' . $firstOrder->getQuoteId();
-            $this->responseFactory->create()->setRedirect($redirectUrl)->sendResponse();
-            die();
         }
+
+        return $this;
 
     }
 }

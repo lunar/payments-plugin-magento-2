@@ -3,7 +3,6 @@
 namespace Lunar\Payment\Model\Adminhtml;
 
 use Magento\Framework\App\Config\Value;
-use Magento\Framework\Exception\LocalizedException;
 
 use Magento\Framework\Model\Context;
 use Magento\Framework\Registry;
@@ -26,7 +25,7 @@ use Lunar\Payment\Model\Adminhtml\Source\CheckoutMode;
  */
 class MobilepayConfigPaymentAction extends Value
 {
-    const MOBILEPAY_HOSTED_CODE = ConfigProvider::MOBILEPAY_HOSTED_CODE;
+    private const MOBILEPAY_HOSTED_CODE = ConfigProvider::MOBILEPAY_HOSTED_CODE;
 
     public function __construct(
         ConfigInterface $configInterface,
@@ -44,13 +43,23 @@ class MobilepayConfigPaymentAction extends Value
         $websiteId = $request->getParam('website') ?? null;
         $storeId   = $request->getParam('store') ?? null;
 
-        $this->configScope = $websiteId ? ScopeInterface::SCOPE_WEBSITE : ($storeId ? ScopeInterface::SCOPE_STORE : ScopeConfigInterface::SCOPE_TYPE_DEFAULT);
+        $this->configScope = $websiteId 
+            ? ScopeInterface::SCOPE_WEBSITE 
+            : ($storeId ? ScopeInterface::SCOPE_STORE : ScopeConfigInterface::SCOPE_TYPE_DEFAULT);
         $this->entityId = $websiteId ?? $storeId ?? 0; // set the default if the request did not come for either the website or the store
 
         $this->paymentActionPath = 'payment/' . self::MOBILEPAY_HOSTED_CODE . '/payment_action';
         // $this->checkoutModePath = 'payment/' . self::MOBILEPAY_HOSTED_CODE . '/checkout_mode';
 
-        parent::__construct($context, $registry, $scopeConfigInterface, $cacheTypeList, $resource, $resourceCollection, $data);
+        parent::__construct(
+            $context, 
+            $registry, 
+            $scopeConfigInterface, 
+            $cacheTypeList, 
+            $resource, 
+            $resourceCollection, 
+            $data
+        );
     }
 
     /**
@@ -61,12 +70,11 @@ class MobilepayConfigPaymentAction extends Value
     {
         $checkoutMode = $this->getValue();
 
-        if (CheckoutMode::AFTER_ORDER == $checkoutMode) {
-            $this->configInterface->saveConfig($this->paymentActionPath, null, $this->configScope, $this->entityId);
-        }
         /** In before_order flow we delete the value. The default value will be used (authorize). */
-        elseif (CheckoutMode::BEFORE_ORDER == $checkoutMode) {
+        if (CheckoutMode::BEFORE_ORDER == $checkoutMode) {
             $this->configInterface->deleteConfig($this->paymentActionPath, $this->configScope, $this->entityId);
+        } elseif (CheckoutMode::AFTER_ORDER == $checkoutMode) {
+            $this->configInterface->saveConfig($this->paymentActionPath, null, $this->configScope, $this->entityId);
         }
 
         return $this;

@@ -2,7 +2,6 @@
 
 namespace Lunar\Payment\Block;
 
-
 class Data  extends \Magento\Framework\View\Element\Template
 {
     protected $_checkoutSession;

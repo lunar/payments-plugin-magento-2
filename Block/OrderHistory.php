@@ -21,9 +21,9 @@ class OrderHistory extends \Magento\Sales\Block\Order\History
      */
     private $orderCollectionFactory;
 
-	/**
-	 * {@inheritdoc}
-	 */
+    /**
+     * {@inheritdoc}
+     */
     public function getOrders()
     {
         if (!($customerId = $this->_customerSession->getCustomerId())) {
@@ -43,9 +43,10 @@ class OrderHistory extends \Magento\Sales\Block\Order\History
                 'status',
                 ['eq' => 'pending']
             )->addAttributeToFilter(
-                'created_at', [
-                    'from' => $startDate, 
-                    'to'=> $endDate
+                'created_at',
+                [
+                    'from' => $startDate,
+                    'to' => $endDate
                 ]
             );
 
@@ -76,7 +77,7 @@ class OrderHistory extends \Magento\Sales\Block\Order\History
     /**
      * Provide order collection factory
      *
-     * @return CollectionFactoryInterface
+     * @return     CollectionFactoryInterface
      * @deprecated 100.1.1
      */
     private function getOrderCollectionFactory()
@@ -88,7 +89,7 @@ class OrderHistory extends \Magento\Sales\Block\Order\History
     }
 
     /**
-     * 
+     *
      */
     private function makeCurlRequest(
         string $uriEndpoint,
@@ -105,13 +106,14 @@ class OrderHistory extends \Magento\Sales\Block\Order\History
         ];
 
         try {
-            $guzzleClient = new GuzzleClient([
+            $guzzleClient = new GuzzleClient(
+                [
                 'base_uri' => $this->baseURL,
-            ]);
+                ]
+            );
 
             $response = $guzzleClient->request($requestMethod, $uriEndpoint, $allParams);
             $response = json_decode($response->getBody()->getContents(), true);
-
         } catch (GuzzleException $exception) {
             $response = ['error' => $exception->getMessage()];
         }

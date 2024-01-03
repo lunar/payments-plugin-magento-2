@@ -16,26 +16,28 @@
 <p id="lunarmobilepay_logs_message">this is a message</p>
 
 
-<script type="text/javascript">
-
+<script>
   let mobilepayExportLogsButton = jQuery(`#lunarmobilepay_logs_export_button`);
   let mobilepayDeleteLogsButton = jQuery(`#lunarmobilepay_logs_delete_button`);
   let mobilepayLogsMessage = jQuery(`#lunarmobilepay_logs_message`);
   let mobilepayLogsEnabledSelector = jQuery(`#payment_us_lunarmobilepay_enable_logs`);
 
   function download(filename, content) {
-      var a = document.createElement('a');
-      a.setAttribute('href', 'data:application/zip;base64, ' + content);
-      a.setAttribute('download', filename);
-      a.click();
+    var a = document.createElement('a');
+    a.setAttribute('href', 'data:application/zip;base64, ' + content);
+    a.setAttribute('download', filename);
+    a.click();
   }
 
   jQuery.ajax({
     url: "/lunar/index/Log",
     type: 'POST',
     dataType: 'text',
-    data: { "writable": 1 , "method_code": "lunarmobilepay"},
-    success: function (data) {
+    data: {
+      "writable": 1,
+      "method_code": "lunarmobilepay"
+    },
+    success: function(data) {
       const response = JSON.parse(data);
       if (response.writable) {
         jQuery("#lunarmobilepay_not_writable").remove();
@@ -43,7 +45,7 @@
       } else {
         mobilepayLogsEnabledSelector.val("0");
         mobilepayLogsEnabledSelector.attr("disabled", true);
-        mobilepayLogsEnabledSelector.after('<p id="lunarmobilepay_not_writable" class="note" style="color: red; margin-top: 8px;">Cannot enable logs right now<br />Please make sure the following directory is writable:<br /><pre><small>'+response.dir+'</small></pre></p>');
+        mobilepayLogsEnabledSelector.after('<p id="lunarmobilepay_not_writable" class="note" style="color: red; margin-top: 8px;">Cannot enable logs right now <br>Please make sure the following directory is writable: <br><pre><small>' + response.dir + '</small></pre></p>');
       }
     },
   });
@@ -53,8 +55,11 @@
       url: "/lunar/index/Log",
       type: 'POST',
       dataType: 'text',
-      data: { "hasLogs": 1  , "method_code": "lunarmobilepay"},
-      success: function (data) {
+      data: {
+        "hasLogs": 1,
+        "method_code": "lunarmobilepay"
+      },
+      success: function(data) {
         if (!data) {
           mobilepayExportLogsButton.attr("disabled", true);
           mobilepayDeleteLogsButton.attr("disabled", true);
@@ -84,8 +89,11 @@
       url: "/lunar/index/Log",
       type: 'POST',
       dataType: 'text',
-      data: { "delete": 1  , "method_code": "lunarmobilepay"},
-      success: function (data) {
+      data: {
+        "delete": 1,
+        "method_code": "lunarmobilepay"
+      },
+      success: function(data) {
         mobilepayLogsMessage.html("Logs deleted");
         mobilepayDeleteLogsButton.html("Delete logs");
 
@@ -104,8 +112,11 @@
       url: "/lunar/index/Log",
       type: 'POST',
       dataType: 'text',
-      data: { "export": 1  , "method_code": "lunarmobilepay"},
-      success: function (data) {
+      data: {
+        "export": 1,
+        "method_code": "lunarmobilepay"
+      },
+      success: function(data) {
         download("lunarMobilepayLogs.zip", data);
 
         mobilepayExportLogsButton.attr("disabled", false);

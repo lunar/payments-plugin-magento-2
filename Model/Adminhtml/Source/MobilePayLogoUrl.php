@@ -33,16 +33,22 @@ class MobilePayLogoUrl extends Value
         // strcmp('250x250', $fileDimensions) !== 0      // disabled for the moment
 
         if (! preg_match('/^https:\/\//', $logoUrl)) {
-            /** Mark the new value as invalid */
+            /**
+* 
+ * Mark the new value as invalid 
+*/
             $this->_dataSaveAllowed = false;
-			throw new LocalizedException(__('The image url must begin with https://.'));
-		}
+            throw new LocalizedException(__('The image url must begin with https://.'));
+        }
 
         if (! in_array($fileExtension, $allowedExtensions)) {
-            /** Mark the new value as invalid */
+            /**
+* 
+ * Mark the new value as invalid 
+*/
             $this->_dataSaveAllowed = false;
-			throw new LocalizedException(__('The image file must have one of the following extensions: ' . implode(', ', $allowedExtensions)));
-		}
+            throw new LocalizedException(__('The image file must have one of the following extensions: ' . implode(', ', $allowedExtensions)));
+        }
 
         return $this;
     }
