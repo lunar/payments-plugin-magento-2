@@ -1,6 +1,6 @@
 {
     "name": "lunar/lunar-magento",
-    "description": "Lunar integration with payment gateway magento 2",
+    "description": "Lunar Online Payments for Magento 2",
     "require": {
         "magento/module-sales": ">100.0.0",
         "magento/module-checkout": ">100.0.0",

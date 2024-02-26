@@ -1,11 +1,11 @@
 {
   "name": "lunar/lunar-magento",
-  "description": "Lunar magento2 gateway",
+  "description": "Lunar Online Payments for Magento 2",
   "license": "MIT",
   "authors": [
     {
-      "name": "Ionut Calara",
-      "email": "ionut.calara@gmail.com"
+      "name": "Lunar",
+      "email": "support@lunar.app"
     }
   ]
 }
