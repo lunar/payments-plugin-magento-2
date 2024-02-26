@@ -84,11 +84,7 @@ class LunarCheckUnpaidOrdersCron
 
 
     public function execute()
-    {
-
-file_put_contents(dirname(__FILE__) . "/zzz.log", json_encode(__FILE__.' >>> '.__FUNCTION__.' >>> '.__LINE__, JSON_PRETTY_PRINT) . PHP_EOL, FILE_APPEND);
-        $lunarOrders = [];
-        
+    {        
         $lunarOrders = $this->orderCollectionFactory->create()
             ->addFieldToSelect(
                 '*'
