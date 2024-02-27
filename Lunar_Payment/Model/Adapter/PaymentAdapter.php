@@ -61,15 +61,13 @@ class PaymentAdapter
      */
     private function setPrivateKey()
     {
-        $transactionMode = $this->getStoreConfigValue('transaction_mode');
-
         /**
          * @TODO get only app_key after complete hosted checkout migration
          */
         if ($this->getStoreConfigValue('app_key')) {
             $privateKey = $this->getStoreConfigValue('app_key');
         } else {
-            $privateKey = "test" == $transactionMode
+            $privateKey = "test" == $this->getStoreConfigValue('transaction_mode')
                 ? $this->getStoreConfigValue('test_app_key')
                 : $this->getStoreConfigValue('live_app_key');
         }

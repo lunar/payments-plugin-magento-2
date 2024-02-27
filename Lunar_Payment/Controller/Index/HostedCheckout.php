@@ -42,9 +42,12 @@ use Lunar\Lunar;
  */
 class HostedCheckout implements \Magento\Framework\App\ActionInterface
 {
+    private const REMOTE_URL = 'https://pay.lunar.money/?id=';
+    private const TEST_REMOTE_URL = 'https://hosted-checkout-git-develop-lunar-app.vercel.app/?id=';
+    
+    private $scopeConfig;
     private $storeManager;
     private $logger;
-    private $scopeConfig;
     private $orderRepository;
     private $jsonFactory;
     private $request;
@@ -60,18 +63,12 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
     private $cookieManager;
     private $orderCollectionFactory;
 
-    private const REMOTE_URL = 'https://pay.lunar.money/?id=';
-    private const TEST_REMOTE_URL = 'https://hosted-checkout-git-develop-lunar-app.vercel.app/?id=';
-
     private Lunar $lunarApiClient;
     private string $transactionId = '';
-    private $intentIdKey = '_lunar_intent_id';
-
     private string $baseURL = '';
     private bool $isInstantMode = false;
     private $quotePayment = null;
 
-    // private ?Order $order = null;
     /** @var Order|Quote $order */
     private $order = null;
 
@@ -216,11 +213,9 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
                 );
             }
 
-
-
-            /**
-             * After callback redirect
-             */
+        /**
+         * After callback redirect
+         */
         } else {
             $transaction = $this->lunarApiClient->payments()->fetch($this->getPaymentIntentFromOrder());
 
@@ -258,9 +253,7 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
 
     private function finalizeOrder()
     {
-        /** Update info on order payment */
-        $this->setTxnIdOnQuotePayment();
-        $this->setTxnIdOnOrderPayment();
+        $this->updateOrderPayment();
 
         if ($this->isInstantMode) {
             // the order state will be changed after invoice creation
@@ -339,21 +332,6 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
     /**
      *
      */
-    private function setTxnIdOnQuotePayment()
-    {
-        try {
-            $additionalInformation = ['transactionid' => $this->transactionId] + $this->quotePayment->getAdditionalInformation();
-            $this->quotePayment->setAdditionalInformation($additionalInformation);
-            $this->quotePayment->save();
-        } catch (\Exception $e) {
-            $this->logger->debug($e->getMessage());
-            $this->redirectToErrorPage(__('Something went wrong saving transaction ID on quote payment'));
-        }
-    }
-
-    /**
-     *
-     */
     private function getOrderCollectionByQuoteId($quoteId)
     {
         return $this->orderCollectionFactory->create()
@@ -367,7 +345,7 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
     /**
      *
      */
-    private function setTxnIdOnOrderPayment()
+    private function updateOrderPayment()
     {
         try {
             /** @var \Magento\Sales\Model\Order\Payment $orderPayment */
@@ -378,9 +356,6 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
 
             $orderPayment->setBaseAmountAuthorized($baseGrandTotal);
             $orderPayment->setAmountAuthorized($grandTotal);
-            // $orderPayment->setAdditionalInformation('transactionid', $this->transactionId);
-            $additionalInformation = ['transactionid' => $this->transactionId] + $orderPayment->getAdditionalInformation();
-            $orderPayment->setAdditionalInformation($additionalInformation);
             $orderPayment->setLastTransId($this->transactionId);
             $orderPayment->setQuotePaymentId($this->quotePayment->getId());
             $orderPayment->save();
@@ -421,8 +396,8 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
         $payment = $this->order->getPayment();
         $additionalInformation = $payment->getAdditionalInformation();
 
-        if ($additionalInformation && array_key_exists($this->intentIdKey, $additionalInformation)) {
-            return $this->paymentIntentId = $additionalInformation[$this->intentIdKey];
+        if ($additionalInformation && array_key_exists('transactionid', $additionalInformation)) {
+            return $this->paymentIntentId = $additionalInformation['transactionid'];
         }
 
         return false;
@@ -436,7 +411,7 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
         $payment = $this->order->getPayment();
         // preserve already existing additional data
         $additionalInformation = $payment->getAdditionalInformation();
-        $additionalInformation[$this->intentIdKey] = $this->paymentIntentId;
+        $additionalInformation['transactionid'] = $this->paymentIntentId;
         $payment->setAdditionalInformation($additionalInformation);
         $payment->save();
 
