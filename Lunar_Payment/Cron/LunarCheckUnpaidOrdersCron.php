@@ -17,7 +17,6 @@ use Magento\Sales\Model\Order\Email\Sender\InvoiceSender;
 use Magento\Sales\Api\OrderPaymentRepositoryInterface as OrderPaymentRepository;
 use Magento\Sales\Model\ResourceModel\Order\CollectionFactory as OrderCollectionFactory;
 use Magento\Sales\Model\ResourceModel\Order\Invoice\CollectionFactory as InvoiceCollectionFactory;
-use Magento\Sales\Model\ResourceModel\Order\Payment\Transaction\Collection as TransactionCollectionFactory;
 
 use Lunar\Lunar;
 use Lunar\Exception\ApiException;
@@ -61,25 +60,23 @@ class LunarCheckUnpaidOrdersCron
         PriceCurrencyInterface $priceCurrencyInterface,
         OrderCollectionFactory $orderCollectionFactory,
         InvoiceCollectionFactory $invoiceCollectionFactory,
-        OrderPaymentRepository $orderPaymentRepository,
+        OrderPaymentRepository $orderPaymentRepository
     ) {
-        $this->logger                        = $logger;
-        $this->scopeConfig                   = $scopeConfig;
-        $this->orderRepository               = $orderRepository;
-        $this->invoiceService                = $invoiceService;
-        $this->transactionFactory            = $transactionFactory;
-        $this->invoiceSender                 = $invoiceSender;
-        $this->priceCurrencyInterface        = $priceCurrencyInterface;
-        $this->orderCollectionFactory        = $orderCollectionFactory;
-        $this->invoiceCollectionFactory      = $invoiceCollectionFactory;
-        $this->orderPaymentRepository        = $orderPaymentRepository;
+        $this->logger                      = $logger;
+        $this->scopeConfig                 = $scopeConfig;
+        $this->orderRepository             = $orderRepository;
+        $this->invoiceService              = $invoiceService;
+        $this->transactionFactory          = $transactionFactory;
+        $this->invoiceSender               = $invoiceSender;
+        $this->priceCurrencyInterface      = $priceCurrencyInterface;
+        $this->orderCollectionFactory      = $orderCollectionFactory;
+        $this->invoiceCollectionFactory    = $invoiceCollectionFactory;
+        $this->orderPaymentRepository      = $orderPaymentRepository;
     }
 
 
     public function execute()
     {
-        $this->logger->debug('"Start Lunar polling:" - ' . date('Y-m-d H:i:s'));
-
         $timestamp = time();
         $to = date('Y-m-d H:i:s', $timestamp);
         $aDayAgo = $timestamp - 86400;
@@ -113,10 +110,16 @@ class LunarCheckUnpaidOrdersCron
                 'payment.method IN (?)', ConfigProvider::LUNAR_HOSTED_METHODS
             );
 
+        if ($latestOrders->count()) {
+            $this->logger->debug('"Start Lunar polling for (' 
+                . $latestOrders->count() . ') orders between" ' . $from . ' - ' . $to);
+        }
 
         /** @TODO delegate order processing logic */
 
         foreach ($latestOrders as $this->order) {
+
+            $this->writeLog('polling', date('Y-m-d H:i:s'));
 
             $this->paymentMethodCode = $this->order->getPayment()->getMethod();
 
@@ -130,7 +133,7 @@ class LunarCheckUnpaidOrdersCron
             $this->transactionId = $this->getPaymentIntentFromOrder();
 
             if (empty($this->transactionId)) {
-                $this->logger->debug('Lunar polling: no transaction id on order: ' . $this->order->getId());
+                $this->writeLog('no transaction ID found');
                 /** We don't want to fetch this order next time */
                 $this->order->setState(Order::STATE_CANCELED)->setStatus(Order::STATE_CANCELED);
                 $this->orderRepository->save($this->order);
@@ -140,26 +143,16 @@ class LunarCheckUnpaidOrdersCron
             try {
                 $apiResponse = $this->apiClient->payments()->fetch($this->transactionId);
             } catch (ApiException $e) {
-                $this->logger->debug(
-                    'Lunar polling (API Exception): order - ' . $this->order->getId() . ' -- ' . $e->getMessage()
-                );
+                $this->writeLog('API Exception', $e->getMessage(), true);
             }
 
             if (empty($apiResponse)) {
-                $this->logger->debug(
-                    'Lunar polling:  no transaction for order - '
-                    . $this->order->getId() . ' -- trnsaction id: '. $this->transactionId
-                );
+                $this->writeLog('no transaction returned by the API', 'transaction id: '. $this->transactionId);
                 continue;
             }
 
-            if ($apiResponse['authorisationCreated'] === true) {
+            if (isset($apiResponse['authorisationCreated']) && $apiResponse['authorisationCreated'] === true) {
                 $this->finalizeOrder();
-            } else {
-                $this->logger->debug(
-                    'Lunar polling: no authorisation for order - '
-                    . $this->order->getId() . ' -- transaction id: '. $this->transactionId
-                );
             }
         }
     }
@@ -177,7 +170,7 @@ class LunarCheckUnpaidOrdersCron
             return $additionalInformation['transactionid'];
         }
 
-        return false;
+        return $orderPayment->getAdditionalInformation();
     }
 
     /**
@@ -198,22 +191,30 @@ class LunarCheckUnpaidOrdersCron
              * We bypass gateway because we cannot set all the data it needs
              */
             try {
-                $apiResponse = $this->apiClient->payments()->capture($this->transactionId);
+                $apiResponse = $this->apiClient->payments()->capture($this->transactionId, [
+                    'amount' => [
+                        'currency' => $this->order->getOrderCurrencyCode(),
+                        'decimal' => (string) $this->order->getGrandTotal(),
+                    ]
+                ]);
 
                 if (isset($apiResponse['captureState']) && 'completed' == $apiResponse['captureState']) {
+                    
                     $this->updateOrderPayment(self::ACTION_CAPTURE);
 
                     $result = $this->upsertPaymentTransaction(self::ACTION_CAPTURE);
                     
-                    // the order state will be changed after invoice creation
-                    $result = $this->createInvoiceForOrder();
+                    $this->createInvoiceForOrder();
+
+                    $this->order->setState(Order::STATE_PROCESSING)->setStatus(Order::STATE_PROCESSING);
+                    $this->orderRepository->save($this->order);
+
+                } elseif (isset($apiResponse['declinedReason'])) {
+                    $this->writeLog('API capture declined', $apiResponse['declinedReason']['error'], true);
                 }
 
             } catch (ApiException $e) {
-                $this->logger->debug(
-                    'Lunar polling (API CAPTURE Exception): order - ' 
-                    . $this->order->getId() . ' -- ' . $e->getMessage()
-                );
+                $this->writeLog('API CAPTURE', $e->getMessage(), true);
             }
 
         } else {
@@ -221,7 +222,7 @@ class LunarCheckUnpaidOrdersCron
         }
 
         if (!empty($result)) {
-            $this->logger->debug('Lunar polling: success for order - ' . $this->order->getId());
+            $this->writeLog('success');
         }
     }
 
@@ -238,6 +239,8 @@ class LunarCheckUnpaidOrdersCron
             $grandTotal = $this->order->getGrandTotal();
             
             if (self::ACTION_CAPTURE == $actionType) {
+                $orderPayment->setBaseShippingCaptured($this->order->getBaseShippingAmount());
+                $orderPayment->setShippingCaptured($this->order->getShippingAmount());
                 $orderPayment->setBaseAmountPaid($baseGrandTotal);
                 $orderPayment->setBaseAmountPaidOnline($baseGrandTotal);
                 $orderPayment->setAmountPaid($grandTotal);
@@ -251,8 +254,9 @@ class LunarCheckUnpaidOrdersCron
             }
 
             $this->orderPaymentRepository->save($orderPayment);
+
         } catch (\Exception $e) {
-            $this->logger->debug('Lunar polling: order - ' . $this->order->getId() . ' -- '. $e->getMessage());
+            $this->writeLog('updating order payment', $e->getMessage(), true);
         }
     }
 
@@ -267,31 +271,26 @@ class LunarCheckUnpaidOrdersCron
 
             $commentContent = 'Authorized amount of ' . $this->getFormattedPriceWithCurrency() . '.';
             $transactionType = TransactionInterface::TYPE_AUTH;
+            $orderPayment->setTransactionId($this->transactionId);
 
             if (self::ACTION_CAPTURE == $actionType) {
-                $orderPayment->setTransactionId('................................');
                 $orderPayment->setIsTransactionClosed(1);
-                $orderPayment->setParentTransactionId($this->transactionId);
                 $orderPayment->setShouldCloseParentTransaction(1);
                 $commentContent = 'Captured amount of ' . $this->getFormattedPriceWithCurrency() . '.';
                 $transactionType = TransactionInterface::TYPE_CAPTURE;
             } else {
                 $orderPayment->setIsTransactionClosed(0);
                 $orderPayment->setShouldCloseParentTransaction(0);
+                $commentContent .= ' Transaction ID: ' . $this->transactionId;
             }
-            
-
-            $orderPayment->save();
 
             $transaction = $orderPayment->addTransaction($transactionType, null, $failSafe = true);
             $orderPayment->addTransactionCommentsToOrder($transaction, $commentContent);
 
             return true;
+
         } catch (\Exception $e) {
-            $this->logger->debug(
-                'Lunar polling (Exception): cannot insert transaction for order - '
-                . $this->order->getId() . ' -- ' . $e->getMessage()
-            );
+            $this->writeLog('cannot insert payment transaction', $e->getMessage(), true);
             return null;
         }
     }
@@ -318,6 +317,7 @@ class LunarCheckUnpaidOrdersCron
 
             $invoice = $this->invoiceService->prepareInvoice($this->order);
             $invoice->setRequestedCaptureCase(Invoice::CAPTURE_OFFLINE);
+            $invoice->setTransactionId($this->transactionId);
             $invoice->register();
             $invoice->getOrder()->setCustomerNoteNotify(false);
             $invoice->getOrder()->setIsInProcess(true);
@@ -335,6 +335,7 @@ class LunarCheckUnpaidOrdersCron
             return true;
 
         } catch (\Exception $e) {
+            $this->writeLog('creating invoice', $e->getMessage(), true);
             $this->order->addCommentToStatusHistory('Lunar polling (Exception): ' . $e->getMessage(), false);
             $this->orderRepository->save($this->order);
             return null;
@@ -350,6 +351,19 @@ class LunarCheckUnpaidOrdersCron
             'payment/' . $this->paymentMethodCode . '/' . $configKey,
             ScopeInterface::SCOPE_STORE,
             $this->order->getStoreId()
+        );
+    }
+
+    /**
+     *
+     */
+    private function writeLog($beginText, $finalText = '', $isException = false)
+    {
+        $exceptionMark = $isException ? '(Exception)' : '';
+
+        $this->logger->debug(
+            "\"Lunar polling {$exceptionMark}: {$beginText} for order - \" "
+            . $this->order->getId() . ' -- "' . $finalText . '"'
         );
     }
 

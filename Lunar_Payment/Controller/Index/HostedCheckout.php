@@ -374,11 +374,13 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
             /** @var \Magento\Sales\Model\Order\Payment $orderPayment */
             $orderPayment = $this->order->getPayment();
 
+            $orderPayment->setTransactionId($this->transactionId);
             $orderPayment->setIsTransactionClosed(0);
             $orderPayment->setShouldCloseParentTransaction(0);
             $transaction = $orderPayment->addTransaction(TransactionInterface::TYPE_AUTH, null, $failSafe = true);
 
             $commentContent = 'Authorized amount of ' . $this->getFormattedPriceWithCurrency() . '.';
+            $commentContent .= ' Transaction ID: ' . $this->transactionId;
             $orderPayment->addTransactionCommentsToOrder($transaction, $commentContent);
         } catch (\Exception $e) {
             $this->logger->debug($e->getMessage());
