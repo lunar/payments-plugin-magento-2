@@ -23,7 +23,7 @@ use Lunar\Payment\Setup\Patch\Data\AddNewOrderStatusPatch;
  */
 class LunarCheckUnpaidOrdersCron
 {
-    private const TEST_MODE = true;
+    private const TEST_MODE = false;
  
     private $logger;
     private $request;
