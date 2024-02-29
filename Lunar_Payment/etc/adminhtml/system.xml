@@ -260,10 +260,10 @@
 <!-- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -->
 
             <group id="lunarpaymenthosted" translate="label" type="text" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1">
-                <label>Lunar (Beta)</label>
+                <label>Lunar Card (hosted checkout)</label>
 
                 <field id="active" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
-                    <label>Enable Lunar (Beta)</label>
+                    <label>Enable Lunar Card (hosted checkout)</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                 </field>
 
@@ -347,10 +347,10 @@
             <!-- +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ -->
 
             <group id="lunarmobilepayhosted" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
-                <label>Lunar MobilePay (Beta)</label>
+                <label>Lunar MobilePay (hosted checkout)</label>
 
                 <field id="active" translate="label" type="select" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
-                    <label>Enable Lunar MobilePay (Beta)</label>
+                    <label>Enable Lunar MobilePay (hosted checkout)</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                 </field>
 
