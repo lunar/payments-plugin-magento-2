@@ -2,6 +2,7 @@
 
 namespace Lunar\Payment\Controller\Index;
 
+use Lunar\Exception\ApiException;
 use Psr\Log\LoggerInterface;
 
 use Magento\Store\Model\ScopeInterface;
@@ -17,13 +18,6 @@ use Magento\Framework\Controller\Result\RedirectFactory;
 use Magento\Quote\Api\CartRepositoryInterface;
 
 use Magento\Sales\Model\Order;
-use Magento\Quote\Model\Quote;
-use Magento\Sales\Api\Data\TransactionInterface;
-use Magento\Framework\DB\TransactionFactory;
-use Magento\Sales\Model\ResourceModel\Order\Invoice\CollectionFactory as InvoiceCollectionFactory;
-use Magento\Sales\Model\Service\InvoiceService;
-use Magento\Sales\Model\Order\Email\Sender\InvoiceSender;
-use Magento\Sales\Model\Order\Invoice;
 use Magento\Framework\Pricing\PriceCurrencyInterface;
 use Magento\Framework\Stdlib\CookieManagerInterface;
 use Magento\Sales\Model\ResourceModel\Order\CollectionFactory as OrderCollectionFactory;
@@ -45,29 +39,26 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
     private const REMOTE_URL = 'https://pay.lunar.money/?id=';
     private const TEST_REMOTE_URL = 'https://hosted-checkout-git-develop-lunar-app.vercel.app/?id=';
     
-    private $scopeConfig;
+    private $configProvider;
     private $storeManager;
     private $logger;
+    private $scopeConfig;
     private $orderRepository;
     private $jsonFactory;
     private $request;
     private $redirectFactory;
     private $response;
     private $messageManager;
-
-    private $invoiceCollectionFactory;
-    private $invoiceService;
-    private $transactionFactory;
-    private $invoiceSender;
+    private $cartRepositoryInterface;
     private $priceCurrencyInterface;
     private $cookieManager;
     private $orderCollectionFactory;
+    private $orderModel;
 
-    private Lunar $lunarApiClient;
+    private Lunar $apiClient;
     private string $transactionId = '';
     private string $baseURL = '';
-    private bool $isInstantMode = false;
-    private $quotePayment = null;
+    private string $quoteId = '';
 
     /** @var Order|Quote $order */
     private $order = null;
@@ -93,187 +84,218 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
         Http $response,
         ManagerInterface $messageManager,
         CartRepositoryInterface $cartRepositoryInterface,
-        Order $orderModel,
-        Quote $quote,
-        InvoiceCollectionFactory $invoiceCollectionFactory,
-        InvoiceService $invoiceService,
-        TransactionFactory $transactionFactory,
-        InvoiceSender $invoiceSender,
         PriceCurrencyInterface $priceCurrencyInterface,
         CookieManagerInterface $cookieManager,
-        OrderCollectionFactory $orderCollectionFactory
+        OrderCollectionFactory $orderCollectionFactory,
+        Order $orderModel
     ) {
 
-        $this->storeManager           = $storeManager;
-        $this->logger                 = $logger;
-        $this->scopeConfig            = $scopeConfig;
-        $this->orderRepository        = $orderRepository;
-        $this->jsonFactory            = $jsonFactory;
-        $this->request                = $request;
-        $this->redirectFactory        = $redirectFactory;
-        $this->response               = $response;
-        $this->messageManager         = $messageManager;
+        $this->configProvider           = $configProvider;
+        $this->storeManager             = $storeManager;
+        $this->logger                   = $logger;
+        $this->scopeConfig              = $scopeConfig;
+        $this->orderRepository          = $orderRepository;
+        $this->jsonFactory              = $jsonFactory;
+        $this->request                  = $request;
+        $this->redirectFactory          = $redirectFactory;
+        $this->response                 = $response;
+        $this->messageManager           = $messageManager;
+        $this->cartRepositoryInterface  = $cartRepositoryInterface;
+        $this->priceCurrencyInterface   = $priceCurrencyInterface;
+        $this->cookieManager            = $cookieManager;
+        $this->orderCollectionFactory   = $orderCollectionFactory;
+        $this->orderModel               = $orderModel;
 
-        $this->invoiceCollectionFactory = $invoiceCollectionFactory;
-        $this->invoiceService = $invoiceService;
-        $this->transactionFactory = $transactionFactory;
-        $this->invoiceSender = $invoiceSender;
-        $this->priceCurrencyInterface = $priceCurrencyInterface;
-        $this->cookieManager = $cookieManager;
-        $this->orderCollectionFactory = $orderCollectionFactory;
+        $response = $this->initialize();
 
-        /**
-         * If request has order_id or multishipping_quote_id, the request is a redirect from hosted page
-         */
-        if ($orderId = $this->request->getParam('order_id')) {
-
-            $this->order = $this->orderRepository->get($orderId);
-            /** @var \Magento\Quote\Model\Quote $quote */
-            $quote = $cartRepositoryInterface->get($this->order->getQuoteId());
-            $this->quotePayment = $quote->getPayment();
-        } elseif ($quoteId = $this->request->getParam('multishipping_quote_id')) {
-            $this->isMultishipping = true;
-
-            /** @var \Magento\Quote\Model\Quote $quote */
-            $quote = $cartRepositoryInterface->get($quoteId);
-            $this->quotePayment = $quote->getPayment();
-
-            $this->order = $quote;
-        } elseif ('1' == $this->request->getParam('multishipping')) {
-            $this->isMultishipping = true;
-
-            $quote = $cartRepositoryInterface->get($this->request->getParam('quote_id'));
-
-            $this->order = $quote;
-        } elseif ($quoteId = $this->request->getParam('quote_id')) {
-            $quote = $cartRepositoryInterface->get($quoteId);
-            $this->order = $orderModel->loadByIncrementId($quote->getReservedOrderId());
-        } else {
+        if ($response) {
             return $this->sendJsonResponse(['error' => true]);
         }
+    }
 
-        $configProvider->setOrder($this->order, $this->isMultishipping);
+    /**
+     *
+     */
+    public function initialize()
+    {
+        /**
+         * If request has order_id or multishipping_quote_id, the request is coming from hosted page
+         */
+        if ($this->request->getParam('order_id')) {
+            $orderId = $this->request->getParam('order_id');
+        }
+
+        if ($this->request->getParam('multishipping_quote_id')) {
+            $this->isMultishipping = true;
+            $this->quoteId = $this->request->getParam('multishipping_quote_id');
+        } 
+
+        if ('1' == $this->request->getParam('multishipping')) {
+            $this->isMultishipping = true;
+            $this->quoteId = $this->request->getParam('quote_id');
+        }
+
+        if ($this->request->getParam('quote_id')) {
+            $this->quoteId = $this->request->getParam('quote_id');
+        }
+
+        if (empty($orderId) && empty($this->quoteId)) {
+            return false;
+        }
+
+        if (!empty($orderId)) {
+            $this->order = $this->orderRepository->get($orderId);
+        } 
+        
+        if (!empty($this->quoteId)) {
+            /** @var \Magento\Quote\Model\Quote $quote */
+            $quote = $this->cartRepositoryInterface->get($this->quoteId);
+            $this->order = $this->orderModel->loadByIncrementId($quote->getReservedOrderId());
+        }
+
+        $this->configProvider->setOrder($this->order);
 
         $this->paymentMethodCode = $this->order->getPayment()->getMethod();
-        $this->args = $configProvider->getConfig()[$this->paymentMethodCode]['config'];
+        $this->args = $this->configProvider->getConfig()[$this->paymentMethodCode]['config'];
 
         $this->baseURL = $this->storeManager->getStore()->getBaseUrl();
-        $this->isInstantMode = (CaptureMode::MODE_INSTANT == $this->getStoreConfigValue('capture_mode'));
 
         $this->testMode = !!$this->cookieManager->getCookie('lunar_testmode');
 
-        $this->publicKey =  $this->getStoreConfigValue('public_key');
         $privateKey =  $this->getStoreConfigValue('app_key');
 
         /** API Client instance */
-        $this->lunarApiClient = new Lunar($privateKey, null, $this->testMode);
+        $this->apiClient = new Lunar($privateKey, null, $this->testMode);
+
+        return true;
     }
 
-
     /**
-     * EXECUTE
+     *
      */
     public function execute()
     {
-        /**
-         * First controller call
-         */
         if ($this->request->getParam('quote_id')) {
+            return $this->redirectToHostedCheckout();
 
-            $this->setArgs();
-
-            /** @TODO is this check necessary here? */
-            if (!$this->getPaymentIntentFromOrder()) {
-                try {
-                    $this->paymentIntentId = $this->lunarApiClient->payments()->create($this->args);
-                } catch (\Lunar\Exception\ApiException $e) {
-                    return $this->sendJsonResponse(['error' => $e->getMessage()], 400);
-                }
-            }
-
-            if (!$this->paymentIntentId) {
-                $errorMessage = 'An error occured creating payment for order. Please try again or contact system administrator.'; // <a href="/">Go to homepage</a>'
-                return $this->sendJsonResponse(['error' => $errorMessage], 400);
-            }
-
-            $this->savePaymentIntentOnOrder();
-
-            $redirectUrl = self::REMOTE_URL . $this->paymentIntentId;
-            if (isset($this->args['test'])) {
-                $redirectUrl = self::TEST_REMOTE_URL . $this->paymentIntentId;
-            }
-
-            if ($this->isMultishipping) {
-                return $this->response->setRedirect($redirectUrl);
-            } else {
-                return $this->sendJsonResponse(
-                    [
-                    'paymentRedirectURL' => $redirectUrl,
-                    ]
-                );
-            }
-
-        /**
-         * After callback redirect
-         */
         } else {
-            $transaction = $this->lunarApiClient->payments()->fetch($this->getPaymentIntentFromOrder());
-
-            $result = $this->parseApiTransactionResponse($transaction);
-
-            if (!$result) {
-                return $this->redirectToErrorPage($this->getResponseError($transaction));
-            }
-
-            $this->transactionId = $transaction['id'];
-
-
-            if ($this->isMultishipping) {
-                $orders = $this->getOrderCollectionByQuoteId($this->order->getId());
-
-                foreach ($orders as $this->order) {
-                    $this->finalizeOrder();
-                }
-            } else {
-                $this->finalizeOrder();
-            }
-
-
-            $dataRedirectUrl = $this->storeManager->getStore()->getBaseUrl();
-            if ($this->isMultishipping) {
-                $dataRedirectUrl .= 'multishipping/checkout/success';
-            } else {
-                $dataRedirectUrl .= 'checkout/onepage/success';
-            }
-
-            return $this->response->setRedirect($dataRedirectUrl);
+            return $this->processOrderPayment();
         }
     }
 
-
-    private function finalizeOrder()
+    /**
+     * 
+     */
+    private function redirectToHostedCheckout()
     {
-        $this->updateOrderPayment();
+        $this->setArgs();
 
-        if ($this->isInstantMode) {
-            // the order state will be changed after invoice creation
-            $this->createInvoiceForOrder();
-        } else {
-            /**
-             * @see https://magento.stackexchange.com/questions/225524/magento-2-show-pending-payment-order-in-store-front/280227#280227
-             * Important note for Pending Payments
-             * If you have a "pending payment" status order,
-             * Magento 2 will cancel the order automatically after 8 hours if the payment status doesn't change.
-             * To change that, go to Stores > Configuration > Sales > Order Cron Settings
-             * and change the Lifetime to a greater value.
-             *
-             * If pending_payment orders not show in front, @see https://magento.stackexchange.com/a/225531/100054
-             */
-            $this->insertNewTransactionForOrderPayment();
-            $this->order->setState(Order::STATE_PROCESSING)->setStatus(AddNewOrderStatusPatch::ORDER_STATUS_PAYMENT_RECEIVED_CODE);
+        if (!$this->getPaymentIntent()) {
+            try {
+                $this->paymentIntentId = $this->apiClient->payments()->create($this->args);
+            } catch (\Lunar\Exception\ApiException $e) {
+                return $this->sendJsonResponse(['error' => $e->getMessage()], 400);
+            }
         }
 
-        $this->orderRepository->save($this->order);
+        if (!$this->paymentIntentId) {
+            $errorMessage = 'An error occured creating payment for order. Please try again or contact system administrator.'; // <a href="/">Go to homepage</a>'
+            return $this->sendJsonResponse(['error' => $errorMessage], 400);
+        }
+
+        $this->savePaymentIntent();
+
+        $redirectUrl = self::REMOTE_URL . $this->paymentIntentId;
+        if (isset($this->args['test'])) {
+            $redirectUrl = self::TEST_REMOTE_URL . $this->paymentIntentId;
+        }
+
+        if ($this->isMultishipping) {
+            return $this->response->setRedirect($redirectUrl);
+        } else {
+            return $this->sendJsonResponse(['paymentRedirectURL' => $redirectUrl]);
+        }
+    }
+
+    /**
+     * 
+     */
+    private function processOrderPayment()
+    {
+        $transaction = null;
+    
+        try {
+            $transaction = $this->apiClient->payments()->fetch($this->getPaymentIntent());
+        } catch (ApiException $e) {
+            return $this->redirectToErrorPage('API exception: '.$e->getMessage());
+        }
+
+        if (!$this->parseApiTransactionResponse($transaction)) {
+            return $this->redirectToErrorPage($this->getResponseError($transaction));
+        }
+
+        $dataRedirectUrl = $this->baseURL;
+
+        if ($this->isMultishipping) {
+            $orders = $this->getOrderCollectionByQuoteId($this->quoteId);
+
+            foreach ($orders as $this->order) {
+                $this->finalizeOrder();
+            }
+
+            $dataRedirectUrl .= 'multishipping/checkout/success';
+
+        } else {
+            $this->finalizeOrder();
+            $dataRedirectUrl .= 'checkout/onepage/success';
+        }
+
+        return $this->response->setRedirect($dataRedirectUrl);
+    }
+
+    /**
+     * 
+     */
+    private function finalizeOrder()
+    {
+        try {
+            /** @var \Magento\Sales\Model\Order\Payment $orderPayment */
+            $orderPayment = $this->order->getPayment();
+
+            if ($orderPayment->getAmountAuthorized()) {
+                $isAuthorized = true;
+            } else {
+                $orderPayment->setTransactionId($this->paymentIntentId);
+                $orderPayment->setQuotePaymentId($this->order->getQuote()?->getPayment()?->getId());
+                $orderPayment->setAmountAuthorized($this->order->getGrandTotal());
+            }
+
+            try {
+                /** 
+                 * We don't need to re-authorize in case someone access 
+                 * the return link again, or move back in the browser
+                 */
+                if (empty($isAuthorized)) {
+                    $orderPayment->authorize($isOnline = true, $this->order->getBaseGrandTotal());
+                }
+            } catch (ApiException $e) {
+                return $this->redirectToErrorPage($e->getMessage());
+            }
+
+            if ((CaptureMode::MODE_INSTANT == $this->getStoreConfigValue('capture_mode'))) {
+                
+                $orderPayment->capture();
+
+            } else {
+                $this->order->setState(Order::STATE_PROCESSING)
+                            ->setStatus(AddNewOrderStatusPatch::ORDER_STATUS_PAYMENT_RECEIVED_CODE);
+            }
+            
+            $this->orderRepository->save($this->order);
+
+        } catch (\Exception $e) {
+            $this->logger->debug($e->getMessage());
+        }
     }
 
     /**
@@ -283,14 +305,14 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
     {
         if ($this->testMode) {
             $this->args['test'] = $this->getTestObject();
-            // $this->args['test'] = new \stdClass();
         } else {
             // Unset 'test' param for live mode
+            // @TODO remove this from ConfigProvider when hosted migration will be done
             unset($this->args['test']);
         }
 
         $this->args['integration'] = [
-            'key' => $this->publicKey,
+            'key' => $this->getStoreConfigValue('public_key'),
             'name' => $this->getStoreConfigValue('store_title') ?? $this->storeManager->getStore()->getName(),
             'logo' =>  $this->getStoreConfigValue('logo_url'),
         ];
@@ -303,7 +325,7 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
         }
 
         if ($this->isMultishipping) {
-            $this->args['redirectUrl'] = $this->baseURL . $this->controllerURL . '?multishipping_quote_id=' . $this->order->getId();
+            $this->args['redirectUrl'] = $this->baseURL . $this->controllerURL . '?multishipping_quote_id=' . $this->quoteId;
         } else {
             unset($this->args['custom']['quoteId']);
             /** Set order increment id to have the same number as in magento admin */
@@ -321,11 +343,9 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
         unset(
             // $this->args['test'],
             $this->args['title'],
-            $this->args['locale'],
             $this->args['amount']['value'],
             $this->args['amount']['exponent'],
             $this->args['checkoutMode'],
-            $this->args['paymentMethod'],
         );
     }
 
@@ -341,57 +361,10 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
                 ['eq' => $quoteId]
             );
     }
-
     /**
      *
      */
-    private function updateOrderPayment()
-    {
-        try {
-            /** @var \Magento\Sales\Model\Order\Payment $orderPayment */
-            $orderPayment = $this->order->getPayment();
-
-            $baseGrandTotal = $this->order->getBaseGrandTotal();
-            $grandTotal = $this->order->getGrandTotal();
-
-            $orderPayment->setBaseAmountAuthorized($baseGrandTotal);
-            $orderPayment->setAmountAuthorized($grandTotal);
-            $orderPayment->setLastTransId($this->transactionId);
-            $orderPayment->setQuotePaymentId($this->quotePayment->getId());
-            $orderPayment->save();
-        } catch (\Exception $e) {
-            $this->logger->debug($e->getMessage());
-            $this->redirectToErrorPage(__('Something went wrong saving transaction ID on payment'));
-        }
-    }
-
-    /**
-     *
-     */
-    private function insertNewTransactionForOrderPayment()
-    {
-        try {
-            /** @var \Magento\Sales\Model\Order\Payment $orderPayment */
-            $orderPayment = $this->order->getPayment();
-
-            $orderPayment->setTransactionId($this->transactionId);
-            $orderPayment->setIsTransactionClosed(0);
-            $orderPayment->setShouldCloseParentTransaction(0);
-            $transaction = $orderPayment->addTransaction(TransactionInterface::TYPE_AUTH, null, $failSafe = true);
-
-            $commentContent = 'Authorized amount of ' . $this->getFormattedPriceWithCurrency() . '.';
-            $commentContent .= ' Transaction ID: ' . $this->transactionId;
-            $orderPayment->addTransactionCommentsToOrder($transaction, $commentContent);
-        } catch (\Exception $e) {
-            $this->logger->debug($e->getMessage());
-            $this->redirectToErrorPage(__('Something went wrong adding new transaction for payment'));
-        }
-    }
-
-    /**
-     *
-     */
-    private function getPaymentIntentFromOrder()
+    private function getPaymentIntent()
     {
         /** @var \Magento\Sales\Model\Order\Payment $payment */
         $payment = $this->order->getPayment();
@@ -406,7 +379,7 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
     /**
      *
      */
-    private function savePaymentIntentOnOrder()
+    private function savePaymentIntent()
     {
         /** @var \Magento\Sales\Model\Order\Payment $payment */
         $payment = $this->order->getPayment();
@@ -417,48 +390,6 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
         $payment->save();
 
         // $this->logger->debug("Storing payment intent: " . json_encode($this->paymentIntentId, JSON_PRETTY_PRINT));
-    }
-
-    /**
-     *
-     */
-    private function createInvoiceForOrder()
-    {
-        $invoiceEmailMode =  $this->getStoreConfigValue('invoice_email');
-
-        try {
-            $invoices = $this->invoiceCollectionFactory->create()
-                ->addAttributeToFilter('order_id', array('eq' => $this->order->getId()));
-            $invoices->getSelect()->limit(1);
-
-            if ((int)$invoices->count() !== 0) {
-                return null;
-            }
-
-            if (!$this->order->canInvoice()) {
-                return null;
-            }
-
-            $invoice = $this->invoiceService->prepareInvoice($this->order);
-            $invoice->setRequestedCaptureCase(Invoice::CAPTURE_ONLINE);
-            $invoice->register();
-            $invoice->getOrder()->setCustomerNoteNotify(false);
-            $invoice->getOrder()->setIsInProcess(true);
-            $transactionSave = $this->transactionFactory->create()->addObject($invoice)->addObject($invoice->getOrder());
-            $transactionSave->save();
-
-            if (!$invoice->getEmailSent() && $invoiceEmailMode == 1) {
-                try {
-                    $this->invoiceSender->send($invoice);
-                } catch (\Exception $e) {
-                    // Do something if failed to send
-                }
-            }
-        } catch (\Exception $e) {
-            $this->order->addCommentToStatusHistory('Exception message: ' . $e->getMessage(), false);
-            $this->orderRepository->save($this->order);
-            return null;
-        }
     }
 
     /**
@@ -518,8 +449,8 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
      */
     private function isTransactionSuccessful($transaction)
     {
-        $matchCurrency = $this->args['amount']['currency'] == $transaction['amount']['currency'];
-        $matchAmount = $this->args['amount']['decimal'] == $transaction['amount']['decimal'];
+        $matchCurrency = $this->args['amount']['currency'] == $transaction['amount']['currency'] ?? null;
+        $matchAmount = $this->args['amount']['decimal'] == $transaction['amount']['decimal'] ?? null;
 
         return (true == $transaction['authorisationCreated'] && $matchCurrency && $matchAmount);
     }
@@ -559,28 +490,6 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
     }
 
     /**
-     *
-     */
-    private function getFormattedPriceWithCurrency($useOrderCurrency = false)
-    {
-        $orderTotal = $this->order->getBaseGrandTotal();
-        $currency = $this->order->getBaseCurrencyCode();
-
-        if ($useOrderCurrency) {
-            $orderTotal = $this->order->getGrandTotal();
-            $currency = $this->order->getOrderCurrencyCode();
-        }
-
-        return $this->priceCurrencyInterface->format(
-            $orderTotal,
-            $includeContainer = false,
-            $precision = 2,
-            $scope = null,
-            $currency
-        );
-    }
-
-    /**
      * @TODO move this into ConfigProvider after complete hosted implementation
      */
     private function getTestObject(): array
@@ -591,12 +500,12 @@ class HostedCheckout implements \Magento\Framework\App\ActionInterface
                 "code"    => "valid",
                 "status"  => "valid",
                 "limit"   => [
-                    "decimal"  => "25000.99",
+                    "decimal"  => "39900.95",
                     "currency" => $this->args['amount']['currency'],
 
                 ],
                 "balance" => [
-                    "decimal"  => "25000.99",
+                    "decimal"  => "39900.95",
                     "currency" => $this->args['amount']['currency'],
 
                 ]

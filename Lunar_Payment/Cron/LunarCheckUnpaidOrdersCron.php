@@ -103,7 +103,7 @@ class LunarCheckUnpaidOrdersCron
 
             $this->apiClient = new Lunar($this->getStoreConfigValue('app_key'), null, self::TEST_MODE);
 
-            $this->transactionId = $this->getPaymentIntentFromOrder();
+            $this->transactionId = $this->getPaymentIntent();
 
             if (empty($this->transactionId)) {
                 $this->writeLog('no transaction ID found');
@@ -133,7 +133,7 @@ class LunarCheckUnpaidOrdersCron
     /**
      *
      */
-    private function getPaymentIntentFromOrder()
+    private function getPaymentIntent()
     {
         /** @var \Magento\Sales\Model\Order\Payment $payment */
         $orderPayment = $this->order->getPayment();
@@ -143,7 +143,7 @@ class LunarCheckUnpaidOrdersCron
             return $additionalInformation['transactionid'];
         }
 
-        return $orderPayment->getAdditionalInformation();
+        return null;
     }
 
     /**
@@ -156,18 +156,6 @@ class LunarCheckUnpaidOrdersCron
             'lunar_testmode' => self::TEST_MODE, // testing purpose only
         ]);
 
-        $result = $this->updateOrderPayment();
-
-        if (!empty($result)) {
-            $this->writeLog('success');
-        }
-    }
-
-    /**
-     *
-     */
-    private function updateOrderPayment()
-    {
         try {
             /** @var \Magento\Sales\Model\Order\Payment $orderPayment */
             $orderPayment = $this->order->getPayment();
@@ -189,13 +177,11 @@ class LunarCheckUnpaidOrdersCron
             
             $this->orderRepository->save($this->order);
 
-            return true;
+            $this->writeLog('success');
 
         } catch (\Exception $e) {
             $this->writeLog('updating order payment', $e->getMessage(), true);
         }
-
-        return false;
     }
 
     /**
