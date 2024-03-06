@@ -38,6 +38,7 @@ class ConfigProvider implements ConfigProviderInterface
     private $cartRepositoryInterface;
     private $_storeManager;
     private $helper;
+    private $isQuote;
     private $fileDriver;
     private $remoteAddress;
     private $productMetadata;
@@ -76,9 +77,10 @@ class ConfigProvider implements ConfigProviderInterface
     /**
      *
      */
-    public function setOrder($order)
+    public function setOrder($order, $isQuote = false)
     {
         $this->order = $order;
+        $this->isQuote = $isQuote;
         return $this;
     }
 
@@ -163,7 +165,9 @@ class ConfigProvider implements ConfigProviderInterface
      */
     private function _getQuote()
     {
-        if ($this->order) {
+        if ($this->order && $this->isQuote) {
+            return $this->cartRepositoryInterface->get($this->order->getId());
+        } else if ($this->order) {
             return $this->cartRepositoryInterface->get($this->order->getQuoteId());
         }
 
@@ -314,7 +318,7 @@ class ConfigProvider implements ConfigProviderInterface
             'IP'      => $this->remoteAddress->getRemoteAddress()
         );
 
-        return [
+        $args = [
             'test' => $this->transactionMode,
             'title' => $title,
             'amount' => [
@@ -339,6 +343,23 @@ class ConfigProvider implements ConfigProviderInterface
                 'lunarPluginVersion' => json_decode($this->fileDriver->fileGetContents(dirname(__DIR__, 2) . '/composer.json'))->version,
             ],
         ];
+
+        /**
+         * Unset some unnecessary args for hosted request
+         *
+         * @TODO remove them when hosted migration will be done
+         */
+        if (in_array($this->paymentMethodCode, self::LUNAR_HOSTED_METHODS)) {
+            unset(
+                $args['test'],
+                $args['title'],
+                $args['amount']['value'],
+                $args['amount']['exponent'],
+            );
+        }
+
+
+        return $args;
     }
 
     /**

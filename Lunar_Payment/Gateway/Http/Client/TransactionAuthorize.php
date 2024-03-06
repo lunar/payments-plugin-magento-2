@@ -85,8 +85,8 @@ class TransactionAuthorize implements ClientInterface
     private function getFieldsBasedOnResponseType($resultCode)
     {
         switch ($resultCode) {
-        case self::FAILURE:
-            return [
+            case self::FAILURE:
+                return [
                     'FRAUD_MSG_LIST' => [
                         'Stolen card',
                         'Customer location differs'
