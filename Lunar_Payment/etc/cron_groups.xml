@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Cron:etc/cron_groups.xsd">
+    <group id="lunar_payment">
+        <schedule_generate_every>20</schedule_generate_every>
+        <schedule_ahead_for>1</schedule_ahead_for>
+        <schedule_lifetime>5</schedule_lifetime>
+        <history_cleanup_every>60</history_cleanup_every>
+        <history_success_lifetime>60</history_success_lifetime>
+        <history_failure_lifetime>86400</history_failure_lifetime>
+        <use_separate_process>1</use_separate_process>
+    </group>
+</config>
+
+<!-- 
+schedule_generate_every => Frequency (in minutes) that schedules are written to the cron_schedule table.
+schedule_ahead_for => Time (in minutes) in advance that schedules are written to the cron_schedule table.
+schedule_lifetime => Window of time (in minutes) that cron job must start or will be considered missed (“too late” to run).
+history_cleanup_every => Time (in minutes) that cron history is kept in the database.
+history_success_lifetime => Time (in minutes) that the record of successfully completed cron jobs is kept in the database.
+history_failure_lifetime => Time (in minutes) that the record of failed cron jobs is kept in the database.
+use_separate_process => This feature is available only for Magento 2.1 and later.
+-->

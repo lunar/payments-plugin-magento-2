@@ -2,9 +2,10 @@
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
         xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Cron:etc/crontab.xsd">
 
-    <group id="default">
+    <group id="lunar_payment">
+        <!-- The schedule interval to be inserted into DB can be set from the admin panel: "<admin_url>/admin/system_config/edit/section/system/" -->
         <job name="lunar_check_unpaid_orders" instance="Lunar\Payment\Cron\LunarCheckUnpaidOrdersCron" method="execute">
-            <schedule>*/20 * * * *</schedule>
+            <schedule>* * * * *</schedule>
         </job>
     </group>
 
