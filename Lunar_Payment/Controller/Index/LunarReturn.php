@@ -178,7 +178,7 @@ class LunarReturn implements \Magento\Framework\App\ActionInterface
                     if ($this->isMultishipping) {
                         $orderPayment->setQuotePaymentId($this->multishippingQuotePayment->getId());
                     } else {
-                        $orderPayment->setQuotePaymentId($this->order->getQuote()?->getPayment()?->getId());
+                        $orderPayment->setQuotePaymentId($this->order->getQuote()->getPayment()->getId());
                     }
 
                     $orderPayment->authorize($isOnline = true, $this->order->getBaseGrandTotal());

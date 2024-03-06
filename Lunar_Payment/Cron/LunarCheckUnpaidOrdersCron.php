@@ -161,7 +161,7 @@ class LunarCheckUnpaidOrdersCron
             $orderPayment = $this->order->getPayment();
 
             $orderPayment->setTransactionId($this->transactionId);
-            $orderPayment->setQuotePaymentId($this->order->getQuote()?->getPayment()?->getId());
+            $orderPayment->setQuotePaymentId($this->order->getQuote()->getPayment()->getId());
             $orderPayment->setAmountAuthorized($this->order->getGrandTotal());
 
             $orderPayment->authorize($isOnline = true, $this->order->getBaseGrandTotal());
