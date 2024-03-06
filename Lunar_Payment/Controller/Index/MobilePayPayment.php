@@ -33,6 +33,7 @@ use GuzzleHttp\Exception\GuzzleException;
 
 use Lunar\Payment\Model\Ui\ConfigProvider;
 use Lunar\Payment\Model\Adminhtml\Source\CaptureMode;
+use Lunar\Payment\Setup\Patch\Data\AddNewOrderStatusPatch;
 
 /**
  * Controller responsible to manage MobilePay payments
@@ -186,17 +187,8 @@ class MobilePayPayment implements ActionInterface
                 // the order state will be changed after invoice creation
                 $this->createInvoiceForOrder();
             } else {
-                /**
-                 * @see https://magento.stackexchange.com/questions/225524/magento-2-show-pending-payment-order-in-store-front/280227#280227
-                 * Important note for Pending Payments
-                 * If you have a "pending payment" status order,
-                 * Magento 2 will cancel the order automatically after 8 hours if the payment status doesn't change.
-                 * To change that, go to Stores > Configuration > Sales > Order Cron Settings
-                 * and change the Lifetime to a greater value.
-                 *
-                 * If pending_payment orders not show in front, @see https://magento.stackexchange.com/a/225531/100054
-                 */
-                $this->order->setState(Order::STATE_PENDING_PAYMENT)->setStatus(Order::STATE_PENDING_PAYMENT);
+                $this->order->setState(Order::STATE_PROCESSING)
+                        ->setStatus(AddNewOrderStatusPatch::ORDER_STATUS_PAYMENT_RECEIVED_CODE);
             }
 
             $this->order->save();
