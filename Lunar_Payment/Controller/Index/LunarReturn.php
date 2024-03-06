@@ -165,40 +165,36 @@ class LunarReturn implements \Magento\Framework\App\ActionInterface
         try {
             /** @var \Magento\Sales\Model\Order\Payment $orderPayment */
             $orderPayment = $this->order->getPayment();
+            $isInstantMode = CaptureMode::MODE_INSTANT == $this->getStoreConfigValue('capture_mode');
 
-            try {
-                /** 
-                 * We don't need to re-authorize in case someone access 
-                 * the return link again, or move back in the browser
-                 */
-                if (!$orderPayment->getAmountAuthorized()) {
-                    $orderPayment->setTransactionId($this->paymentIntentId);
-                    $orderPayment->setAmountAuthorized($this->order->getGrandTotal());
-    
-                    if ($this->isMultishipping) {
-                        $orderPayment->setQuotePaymentId($this->multishippingQuotePayment->getId());
-                    } else {
-                        $orderPayment->setQuotePaymentId($this->order->getQuote()->getPayment()->getId());
-                    }
+            /** 
+             * We don't need to re-authorize in case someone access 
+             * the return link again, or move back in the browser
+             */
+            if (!$orderPayment->getAmountAuthorized()) {
+                $orderPayment->setTransactionId($this->paymentIntentId);
+                $orderPayment->setAmountAuthorized($this->order->getGrandTotal());
 
-                    $orderPayment->authorize($isOnline = true, $this->order->getBaseGrandTotal());
+                if ($this->isMultishipping) {
+                    $orderPayment->setQuotePaymentId($this->multishippingQuotePayment->getId());
+                } else {
+                    $orderPayment->setQuotePaymentId($this->order->getQuote()->getPayment()->getId());
                 }
 
-            } catch (ApiException $e) {
-                return $this->redirectToErrorPage($e->getMessage());
+                $orderPayment->authorize($isOnline = true, $this->order->getBaseGrandTotal());
             }
 
-            if ((CaptureMode::MODE_INSTANT == $this->getStoreConfigValue('capture_mode'))) {
-                
-                try {
+            try {
+                if ($isInstantMode && $orderPayment->getAmountAuthorized()) {
                     $orderPayment->capture();
-                } catch (ApiException $e) {
-                    $this->logger->debug('Lunar capture failed. Reason: '.$e->getMessage());
-                    $this->order->setState(Order::STATE_PROCESSING)
-                                ->setStatus(AddNewOrderStatusPatch::ORDER_STATUS_PAYMENT_RECEIVED_CODE);
                 }
-
-            } else {
+            } catch (ApiException $e) {
+                $this->logger->debug('Lunar capture failed. Reason: '.$e->getMessage());
+                $this->order->setState(Order::STATE_PROCESSING)
+                            ->setStatus(AddNewOrderStatusPatch::ORDER_STATUS_PAYMENT_RECEIVED_CODE);
+            }
+            
+            if ($orderPayment->getAmountAuthorized()) {
                 $this->order->setState(Order::STATE_PROCESSING)
                             ->setStatus(AddNewOrderStatusPatch::ORDER_STATUS_PAYMENT_RECEIVED_CODE);
             }
@@ -295,7 +291,7 @@ class LunarReturn implements \Magento\Framework\App\ActionInterface
 
     /**
      * Checks if the transaction was successful and
-     * the data was not tempered with.
+     * the data was not tampered with.
      *
      * @return bool
      */
