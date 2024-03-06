@@ -10,6 +10,7 @@ use Magento\Sales\Model\OrderRepository;
 use Magento\Framework\App\RequestInterface;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Sales\Model\ResourceModel\Order\CollectionFactory as OrderCollectionFactory;
+use Magento\Quote\Api\CartRepositoryInterface;
 
 use Lunar\Lunar;
 use Lunar\Exception\ApiException;
@@ -30,6 +31,7 @@ class LunarCheckUnpaidOrdersCron
     private $scopeConfig;
     private $orderRepository;
     private $orderCollectionFactory;
+    private $cartRepository;
     
     /** @var Order $order */
     private $order = null;
@@ -43,13 +45,15 @@ class LunarCheckUnpaidOrdersCron
         RequestInterface $request,
         ScopeConfigInterface $scopeConfig,
         OrderRepository $orderRepository,
-        OrderCollectionFactory $orderCollectionFactory
+        OrderCollectionFactory $orderCollectionFactory,
+        CartRepositoryInterface $cartRepository
     ) {
         $this->logger                      = $logger;
         $this->request                     = $request;
         $this->scopeConfig                 = $scopeConfig;
         $this->orderRepository             = $orderRepository;
         $this->orderCollectionFactory      = $orderCollectionFactory;
+        $this->cartRepository              = $cartRepository;
     }
 
 
@@ -95,7 +99,7 @@ class LunarCheckUnpaidOrdersCron
 
         foreach ($latestOrders as $this->order) {
 
-            $this->writeLog('polling', date('Y-m-d H:i:s'));
+            $this->writeLog('', date('Y-m-d H:i:s'));
 
             $this->paymentMethodCode = $this->order->getPayment()->getMethod();
 
@@ -122,7 +126,7 @@ class LunarCheckUnpaidOrdersCron
                 continue;
             }
 
-            if (isset($apiResponse['authorisationCreated']) && $apiResponse['authorisationCreated'] === true) {
+            if ($this->isTransactionSuccessful($apiResponse)) {
                 $this->finalizeOrder();
             }
         }
@@ -154,16 +158,24 @@ class LunarCheckUnpaidOrdersCron
             'lunar_testmode' => self::TEST_MODE, // testing purpose only
         ]);
 
+        /** @var \Magento\Sales\Model\Order\Payment $orderPayment */
+        $orderPayment = $this->order->getPayment();
+        $isInstantMode = CaptureMode::MODE_INSTANT == $this->getStoreConfigValue('capture_mode');
+
         try {
-            /** @var \Magento\Sales\Model\Order\Payment $orderPayment */
-            $orderPayment = $this->order->getPayment();
-            $orderPayment->setTransactionId($this->transactionId);
-            $orderPayment->setAmountAuthorized($this->order->getGrandTotal());
+            /** 
+             * We don't need to re-authorize in case someone access 
+             * the return link again, or move back in the browser
+             */
+            if (!$orderPayment->getAmountAuthorized()) {
+                $orderPayment->setTransactionId($this->transactionId);
+                $orderPayment->setAmountAuthorized($this->order->getGrandTotal());
 
-            $orderPayment->authorize($isOnline = true, $this->order->getBaseGrandTotal());
+                $orderPayment->authorize($isOnline = true, $this->order->getBaseGrandTotal());
+            }
 
-            if ((CaptureMode::MODE_INSTANT == $this->getStoreConfigValue('capture_mode'))) {
-                
+            if ($isInstantMode && $orderPayment->getAmountAuthorized()) {
+            
                 $orderPayment->capture();
 
             } else {
@@ -175,9 +187,51 @@ class LunarCheckUnpaidOrdersCron
 
             $this->writeLog('success');
 
+        } catch (ApiException $e) {
+            $this->writeLog('authorize/capture order payment', $e->getMessage(), true);
         } catch (\Exception $e) {
-            $this->writeLog('updating order payment', $e->getMessage(), true);
+            $this->writeLog('finalizing order', $e->getMessage(), true);
         }
+    }
+
+    /**
+     * Checks if the transaction was successful and
+     * the data was not tampered with.
+     *
+     * @return bool
+     */
+    private function isTransactionSuccessful($transaction)
+    {      
+        $grandTotal = $this->order->getGrandTotal();
+        $currency = $this->order->getOrderCurrencyCode();
+
+        $transactionCurrency = $transaction['amount']['currency'] ?? null;
+        $transactionAmount = $transaction['amount']['decimal'] ?? null;
+
+        if ($grandTotal > $transactionAmount || $currency != $transactionCurrency) {
+            $this->writeLog('amount/currency does not match');
+            return false;
+        }
+
+        /** 
+        * For multishipping flow, we'll check the quote 
+        * because the order amount will be different from the transaction
+        * Not bullet proof, but a small measure of security
+        */
+        if ($grandTotal < $transactionAmount) {
+            /** @var \Magento\Quote\Model\Quote $quote */
+            $quote = $this->cartRepository->get($this->order->getQuoteId());
+
+            $quoteGrandTotal = $quote->getGrandTotal();
+            $quoteCurrency = $quote->getQuoteCurrencyCode();
+
+            if ($quoteGrandTotal != $transactionAmount || $quoteCurrency != $transactionCurrency) {
+                $this->writeLog('quote amount/currency does not match');
+                return false;
+            }
+        }
+
+        return !empty($transaction['authorisationCreated']);
     }
 
     /**
