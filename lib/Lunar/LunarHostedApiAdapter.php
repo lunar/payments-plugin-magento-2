@@ -45,20 +45,26 @@ if (!class_exists('Lunar\\LunarHostedApiAdapter')) {
         {
             $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
             $cookieManager = $objectManager->get(\Magento\Framework\Stdlib\CookieManagerInterface::class);
+            $request = $objectManager->get(\Magento\Framework\App\RequestInterface::class);
 
             $testMode = !!$cookieManager->getCookie('lunar_testmode');
+
+            // logic used when run cron job
+            if (true === $request->getParam('lunar_testmode', false)) {
+                $testMode = true;
+            }
 
             $lunarApiClient = new Lunar($this->apiKey, null, $testMode);
 
             $data = $data['lunarHosted']; // set in AbstractTransaction class
 
             switch (true) {
-            case strstr($url, 'capture'):
-                return $lunarApiClient->payments()->capture($data['id'], $data);
-            case strstr($url, 'refund'):
-                return $lunarApiClient->payments()->refund($data['id'], $data);
-            case strstr($url, 'void'):
-                return $lunarApiClient->payments()->cancel($data['id'], $data);
+                case strstr($url, 'capture'):
+                    return $lunarApiClient->payments()->capture($data['id'], $data);
+                case strstr($url, 'refund'):
+                    return $lunarApiClient->payments()->refund($data['id'], $data);
+                case strstr($url, 'void'):
+                    return $lunarApiClient->payments()->cancel($data['id'], $data);
             }
         }
     }

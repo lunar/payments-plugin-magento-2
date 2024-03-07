@@ -36,7 +36,7 @@ class Log implements \Magento\Framework\App\ActionInterface
         $post = $this->request->getParams();
 
         /** Specific folder name for each payment method */
-        $methodCode = $post['method_code'] ? $post['method_code'] : 'lunar';
+        $methodCode = !empty($post['method_code']) ? $post['method_code'] : 'lunar';
         $this->LOGS_DIR_NAME = str_replace('lunar', $methodCode, $this->LOGS_DIR_NAME);
 
         if (isset($post["export"])) {

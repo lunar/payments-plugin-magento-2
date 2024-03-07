@@ -41,15 +41,15 @@ abstract class AbstractTransaction implements ClientInterface
         $amount = $this->helper->getAmount($value['CURRENCY'], $value['AMOUNT']);
         $decimals = $this->helper->getCurrency($value['CURRENCY'])['exponent'] ?? 2;
         $data = [
-        'amount'   => $amount,
-        'currency' => $value['CURRENCY'],
-        'lunarHosted' => [
-        'amount' => [
-        'currency' => $value['CURRENCY'],
-        'decimal' => number_format($value['AMOUNT'], $decimals, '.', ''),
-        ],
-        'id' => $value['TXN_ID'],
-        ],
+            'amount'   => $amount,
+            'currency' => $value['CURRENCY'],
+            'lunarHosted' => [
+                'amount' => [
+                    'currency' => $value['CURRENCY'],
+                    'decimal' => number_format($value['AMOUNT'], $decimals, '.', ''),
+                ],
+                'id' => $value['TXN_ID'],
+            ],
         ];
 
         try {
@@ -70,8 +70,8 @@ abstract class AbstractTransaction implements ClientInterface
 
             $this->logger->debug(
                 [
-                'request'  => $data,
-                'response' => $response
+                    'request'  => $data,
+                    'response' => $response
                 ]
             );
         }

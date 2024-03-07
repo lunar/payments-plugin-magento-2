@@ -49,7 +49,7 @@
                 <!-- <payment_action>authorize</payment_action> -->
                 <!-- <order_status>pending_payment</order_status> -->
                 <order_status>pending</order_status>
-                <title>Lunar (Beta)</title>
+                <title>Card</title>
                 <currency>USD</currency>
                 <can_authorize>1</can_authorize>
                 <can_capture>1</can_capture>
@@ -70,7 +70,7 @@
                 <!-- <payment_action>authorize</payment_action> -->
                 <!-- <order_status>pending_payment</order_status> -->
                 <order_status>pending</order_status>
-                <title>Mobile Pay (Beta)</title>
+                <title>MobilePay</title>
                 <currency>USD</currency>
                 <can_authorize>1</can_authorize>
                 <can_capture>1</can_capture>

@@ -2,8 +2,7 @@
 
 namespace Lunar\Payment\Model\Ui;
 
-use Magento\Checkout\Model\Cart;
-use Magento\Framework\Locale\Resolver;
+use Magento\Checkout\Model\Session;
 use Magento\Store\Model\ScopeInterface;
 use Magento\Framework\View\Asset\Repository;
 use Magento\Quote\Api\CartRepositoryInterface;
@@ -15,7 +14,6 @@ use Magento\Framework\HTTP\PhpEnvironment\RemoteAddress;
 use Magento\Framework\App\ProductMetadataInterface;
 
 use Lunar\Payment\Helper\Data as Helper;
-use Lunar\Payment\Model\Adminhtml\Source\AcceptedCards;
 use Lunar\Payment\Gateway\Http\Client\TransactionAuthorize;
 
 /**
@@ -30,17 +28,15 @@ class ConfigProvider implements ConfigProviderInterface
     public const MOBILEPAY_HOSTED_CODE = 'lunarmobilepayhosted';
 
     public const LUNAR_HOSTED_METHODS = [
-    self::LUNAR_PAYMENT_HOSTED_CODE,
-    self::MOBILEPAY_HOSTED_CODE,
+        self::LUNAR_PAYMENT_HOSTED_CODE,
+        self::MOBILEPAY_HOSTED_CODE,
     ];
 
     private $scopeConfig;
-    private $_cart;
+    private $_checkoutSession;
     private $_assetRepo;
     private $cartRepositoryInterface;
     private $_storeManager;
-    private $locale;
-    private $cards;
     private $helper;
     private $isQuote;
     private $fileDriver;
@@ -56,12 +52,10 @@ class ConfigProvider implements ConfigProviderInterface
 
     public function __construct(
         ScopeConfigInterface $scopeConfig,
-        Cart $cart,
+        Session $checkoutSession,
         Repository $assetRepo,
         CartRepositoryInterface $cartRepositoryInterface,
         StoreManagerInterface $storeManager,
-        Resolver $locale,
-        AcceptedCards $cards,
         Helper $helper,
         File $fileDriver,
         RemoteAddress $remoteAddress,
@@ -69,17 +63,15 @@ class ConfigProvider implements ConfigProviderInterface
         array $paymentMethods
     ) {
         $this->scopeConfig             = $scopeConfig;
-        $this->_cart                   = $cart;
+        $this->_checkoutSession        = $checkoutSession;
         $this->_assetRepo              = $assetRepo;
         $this->cartRepositoryInterface = $cartRepositoryInterface;
         $this->_storeManager           = $storeManager;
-        $this->locale                  = $locale;
-        $this->cards                   = $cards;
         $this->helper                  = $helper;
         $this->fileDriver              = $fileDriver;
         $this->remoteAddress           = $remoteAddress;
-        $this->productMetadata           = $productMetadata;
-        $this->paymentMethods           = $paymentMethods;
+        $this->productMetadata         = $productMetadata;
+        $this->paymentMethods          = $paymentMethods;
     }
 
     /**
@@ -107,25 +99,37 @@ class ConfigProvider implements ConfigProviderInterface
             $this->transactionMode = $this->getStoreConfigValue('transaction_mode');
 
             /**
-    
-       * Send config data only when a payment method is active. 
-*/
-            if ($this->getStoreConfigValue('active')) {
+             * Send config data only when a payment method is active and properly set 
+             */
+            if (
+                $this->getStoreConfigValue('active')
+                &&
+                (
+                    ('live' === $this->transactionMode
+                        && $this->getStoreConfigValue('live_app_key')
+                    )
+                    ||
+                    ('test' === $this->transactionMode
+                        && $this->getStoreConfigValue('test_app_key')
+                    )
+                    || $this->getStoreConfigValue('app_key')
+                )
+            ) {
                 $configData['payment'][$methodCode]['transactionResults'] = [
-                 TransactionAuthorize::SUCCESS => __('Success'),
-                 TransactionAuthorize::FAILURE => __('Fraud'),
+                    TransactionAuthorize::SUCCESS => __('Success'),
+                    TransactionAuthorize::FAILURE => __('Fraud'),
                 ];
 
                 $configData[$methodCode] = [
-                 'checkoutMode' => $this->getStoreConfigValue('checkout_mode'),
-                 'description'  => $this->getStoreConfigValue('description'),
-                 'config'       => $this->getConfigJSON(),
-                 'publicapikey' => $this->getPublicKey(),
-                 'cards'        => $this->getAcceptedCards(),
-                 'url'          => $this->getImageUrl(),
-                 'multiplier'   => $this->getMultiplier($this->getStoreCurrentCurrency()),
-                 'logsEnabled'  => $this->getLogsEnabled(),
-                 'methodTitle'  => $this->getStoreConfigValue('title'),
+                    'checkoutMode' => $this->getStoreConfigValue('checkout_mode'),
+                    'description'  => $this->getStoreConfigValue('description'),
+                    'config'       => $this->getConfigJSON(),
+                    'publicapikey' => $this->getPublicKey(),
+                    'cards'        => $this->getAcceptedCards(),
+                    'url'          => $this->getImageUrl(),
+                    'multiplier'   => $this->getMultiplier($this->getStoreCurrentCurrency()),
+                    'logsEnabled'  => $this->getLogsEnabled(),
+                    'methodTitle'  => $this->getStoreConfigValue('title'),
                 ];
             }
         }
@@ -167,7 +171,7 @@ class ConfigProvider implements ConfigProviderInterface
             return $this->cartRepositoryInterface->get($this->order->getQuoteId());
         }
 
-        return $this->_cart->getQuote();
+        return $this->_checkoutSession->getQuote();
     }
 
     /**
@@ -211,8 +215,8 @@ class ConfigProvider implements ConfigProviderInterface
     private function getPublicKey()
     {
         return 'test' === $this->transactionMode
-        ? $this->getStoreConfigValue('test_public_key')
-        : $this->getStoreConfigValue('live_public_key');
+            ? $this->getStoreConfigValue('test_public_key')
+            : $this->getStoreConfigValue('live_public_key');
     }
 
     /**
@@ -256,16 +260,12 @@ class ConfigProvider implements ConfigProviderInterface
     private function getConfigJSON()
     {
 
-        /**
-* 
-         *
-    * @var Quote @quote 
-*/
-        $quote        = $this->_getQuote();
+        /** @var Quote @quote */
+        $quote = $this->_getQuote();
 
-        $title        = $this->getPopupTitle();
-        $currency     = $this->getStoreCurrentCurrency();
-        $total      = $quote->getGrandTotal();
+        $title = $this->getPopupTitle();
+        $currency = $this->getStoreCurrentCurrency();
+        $total = $quote->getGrandTotal();
 
         $amount = $this->getAmount($currency, $total);
         $exponent = $this->getExponent($currency);
@@ -274,11 +274,11 @@ class ConfigProvider implements ConfigProviderInterface
         $products = array();
         foreach ($quote->getAllVisibleItems() as $item) {
             $product    = array(
-            'ID'       => $item->getProductId(),
-            'SKU'      => $item->getSku(),
-            'name'     => $item->getName(),
-            'quantity' => $item->getQty(),
-            'Unit Price'  => number_format($item->getPriceInclTax() ?? 0.0, $exponent),
+                'ID'       => $item->getProductId(),
+                'SKU'      => $item->getSku(),
+                'name'     => $item->getName(),
+                'quantity' => $item->getQty(),
+                'Unit Price'  => number_format($item->getPriceInclTax() ?? 0.0, $exponent),
             );
 
             if ($item->getQty() > 1) {
@@ -287,11 +287,6 @@ class ConfigProvider implements ConfigProviderInterface
 
             $products[] = $product;
         }
-
-        // if (! $this->order) {
-        //     $quoteId = $quote->getId();
-        //     $quote   = $this->cartRepositoryInterface->get($quote->getId());
-        // }
 
         $customerData = $quote->getCustomer();
         $email        = $quote->getBillingAddress()->getEmail();
@@ -310,46 +305,61 @@ class ConfigProvider implements ConfigProviderInterface
         }
 
         $customerAddress = $address->getStreet()[0] . ", "
-        . $address->getCity() . ", "
-        . $address->getRegion() . " "
-        . $address->getPostcode() . ", "
-        . $address->getCountryId();
+            . $address->getCity() . ", "
+            . $address->getRegion() . " "
+            . $address->getPostcode() . ", "
+            . $address->getCountryId();
 
         $customer = array(
-        'name'    => $name,
-        'email'   => $email,
-        'phoneNo' => $address->getTelephone(),
-        'address' => $customerAddress,
-        'IP'      => $this->remoteAddress->getRemoteAddress()
+            'name'    => $name,
+            'email'   => $email,
+            'phoneNo' => $address->getTelephone(),
+            'address' => $customerAddress,
+            'IP'      => $this->remoteAddress->getRemoteAddress()
         );
 
-        return [
-        'test' => $this->transactionMode,
-        'title' => $title,
-        'amount' => [
-        'currency' => $currency,
-        'exponent' => $exponent,
-        'value'    => $amount,
-        /**
-         * @TODO re-check this in another scenarios, or get separators dynamically
-         * see also in AbstractTransaction class
-         */
-        'decimal'  => number_format($total, $exponent, '.', ''), // remove thousands separator
-        ],
-        'locale' => $this->locale->getLocale(),
-        'custom' => [
-        'quoteId' => $quote->getId(),
-        'products'     => $products,
-        'shipping tax' => number_format($quote->getShippingAddress()->getShippingInclTax() ?? 0.0, $exponent),
-        'customer'     => $customer,
-        'platform' => [
-        'name'    => 'Magento',
-        'version' => $this->productMetadata->getVersion()
-        ],
-        'lunarPluginVersion' => json_decode($this->fileDriver->fileGetContents(dirname(__DIR__, 2) . '/composer.json'))->version,
-        ],
-        'paymentMethod'  => $this->paymentMethodCode,
+        $args = [
+            'test' => $this->transactionMode,
+            'title' => $title,
+            'amount' => [
+                'currency' => $currency,
+                'exponent' => $exponent,
+                'value'    => $amount,
+                /**
+                 * @TODO re-check this in another scenarios, or get separators dynamically
+                 * see also in AbstractTransaction class
+                 */
+                'decimal'  => number_format($total, $exponent, '.', ''), // remove thousands separator
+            ],
+            'custom' => [
+                'quoteId' => $quote->getId(),
+                'products'     => $products,
+                'shipping tax' => number_format($quote->getShippingAddress()->getShippingInclTax() ?? 0.0, $exponent),
+                'customer'     => $customer,
+                'platform' => [
+                    'name'    => 'Magento',
+                    'version' => $this->productMetadata->getVersion()
+                ],
+                'lunarPluginVersion' => json_decode($this->fileDriver->fileGetContents(dirname(__DIR__, 2) . '/composer.json'))->version,
+            ],
         ];
+
+        /**
+         * Unset some unnecessary args for hosted request
+         *
+         * @TODO remove them when hosted migration will be done
+         */
+        if (in_array($this->paymentMethodCode, self::LUNAR_HOSTED_METHODS)) {
+            unset(
+                $args['test'],
+                $args['title'],
+                $args['amount']['value'],
+                $args['amount']['exponent'],
+            );
+        }
+
+
+        return $args;
     }
 
     /**

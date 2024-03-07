@@ -36,7 +36,7 @@ class MultishippingRedirect
         }
 
         $redirectUrl = $this->storeManager->getStore()->getBaseUrl()
-                        . '/lunar/index/HostedCheckout/?multishipping=1&quote_id=' . $quote->getId();
+                        . '/lunar/index/LunarRedirect/?multishipping=1&quote_id=' . $quote->getId();
 
         return $this->response->setRedirect($redirectUrl);
     }
