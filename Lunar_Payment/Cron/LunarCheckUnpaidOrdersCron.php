@@ -171,6 +171,10 @@ class LunarCheckUnpaidOrdersCron
                 $orderPayment->setTransactionId($this->transactionId);
                 $orderPayment->setAmountAuthorized($this->order->getGrandTotal());
 
+                /** @var \Magento\Quote\Model\Quote $quote */
+                $quote = $this->cartRepository->get($this->order->getQuoteId());
+                $orderPayment->setQuotePaymentId($quote->getPayment()->getId());
+
                 $orderPayment->authorize($isOnline = true, $this->order->getBaseGrandTotal());
             }
 

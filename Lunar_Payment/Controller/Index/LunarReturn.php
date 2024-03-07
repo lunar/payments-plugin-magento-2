@@ -14,6 +14,7 @@ use Magento\Framework\Message\ManagerInterface;
 use Magento\Framework\Controller\Result\RedirectFactory;
 use Magento\Quote\Api\CartRepositoryInterface;
 use Magento\Sales\Model\Order;
+use Magento\Quote\Model\Quote;
 use Magento\Framework\Stdlib\CookieManagerInterface;
 use Magento\Sales\Model\ResourceModel\Order\CollectionFactory as OrderCollectionFactory;
 
@@ -36,7 +37,7 @@ class LunarReturn implements \Magento\Framework\App\ActionInterface
     private $redirectFactory;
     private $response;
     private $messageManager;
-    private $cartRepositoryInterface;
+    private $cartRepository;
     private $cookieManager;
     private $orderCollectionFactory;
 
@@ -44,7 +45,9 @@ class LunarReturn implements \Magento\Framework\App\ActionInterface
     private $order = null;
     /** @var Quote|null $quote */
     private $quote = null;
-    private Lunar $apiClient;
+    /** @var Lunar $apiClient */
+    private $apiClient;
+
     private string $baseURL = '';
     private ?string $quoteId = '';
     private string $paymentIntentId = '';
@@ -64,7 +67,7 @@ class LunarReturn implements \Magento\Framework\App\ActionInterface
         RedirectFactory $redirectFactory,
         Http $response,
         ManagerInterface $messageManager,
-        CartRepositoryInterface $cartRepositoryInterface,
+        CartRepositoryInterface $cartRepository,
         CookieManagerInterface $cookieManager,
         OrderCollectionFactory $orderCollectionFactory
     ) {
@@ -77,7 +80,7 @@ class LunarReturn implements \Magento\Framework\App\ActionInterface
         $this->redirectFactory          = $redirectFactory;
         $this->response                 = $response;
         $this->messageManager           = $messageManager;
-        $this->cartRepositoryInterface  = $cartRepositoryInterface;
+        $this->cartRepository           = $cartRepository;
         $this->cookieManager            = $cookieManager;
         $this->orderCollectionFactory   = $orderCollectionFactory;
 
@@ -104,8 +107,7 @@ class LunarReturn implements \Magento\Framework\App\ActionInterface
         if (!empty($this->quoteId)) {
             $this->isMultishipping = true;
 
-            /** @var \Magento\Quote\Model\Quote $quote */
-            $this->quote = $this->cartRepositoryInterface->get($this->quoteId);
+            $this->quote = $this->cartRepository->get($this->quoteId);
             $this->multishippingQuotePayment = $this->quote->getPayment();
             $this->paymentMethodCode = $this->multishippingQuotePayment->getMethod();
         }
@@ -178,7 +180,9 @@ class LunarReturn implements \Magento\Framework\App\ActionInterface
                 if ($this->isMultishipping) {
                     $orderPayment->setQuotePaymentId($this->multishippingQuotePayment->getId());
                 } else {
-                    $orderPayment->setQuotePaymentId($this->order->getQuote()->getPayment()->getId());
+                    /** @var \Magento\Quote\Model\Quote $quote */
+                    $quote = $this->cartRepository->get($this->order->getQuoteId());
+                    $orderPayment->setQuotePaymentId($quote->getPayment()->getId());
                 }
 
                 $orderPayment->authorize($isOnline = true, $this->order->getBaseGrandTotal());
