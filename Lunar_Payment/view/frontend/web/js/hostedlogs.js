@@ -1,7 +1,7 @@
 window.LunarLoggerHosted = {
     date: new Date().getTime(),
     context: {},
-    setContext: function (context, Jquery, MageUrl, isMobilePay = false) {
+    setContext: function (context, Jquery, MageUrl, methodName) {
         if (!this.enabled()) {
             console.log("logs not enabled");
             return;
@@ -10,7 +10,7 @@ window.LunarLoggerHosted = {
         this.context = context;
         this.Jquery = Jquery;
         this.url = MageUrl;
-        this.isMobilePay = isMobilePay;
+        this.methodName = methodName;
     },
 
     log: async function (message, data = {}) {
@@ -24,7 +24,7 @@ window.LunarLoggerHosted = {
             data,
             date: this.date,
             context: this.context,
-            method_code: this.isMobilePay ? 'lunarmobilepayhosted' : '',
+            method_code: this.methodName,
         }
 
         this.Jquery.ajax(
@@ -38,8 +38,7 @@ window.LunarLoggerHosted = {
     },
 
     enabled: function () {
-        var methodName = this.isMobilePay ? 'lunarmobilepayhosted' : 'lunarpaymenthosted';
-        var methodConfig = window.checkoutConfig[methodName];
+        var methodConfig = window.checkoutConfig[this.methodName];
         return methodConfig?.logsEnabled;
     }
   }

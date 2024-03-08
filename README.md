@@ -106,3 +106,6 @@ Under the Magento Lunar payment method settings, you can:
       * Lunar admin panel: full/partial void
 
   4. Multishipping support - a customer can place orders on multiple shipping addresses
+
+  4. Cron - check for unpaid orders - when a customer places an order, he pays for it, but does not return to the website (only for hosted checkout methods).
+    - The schedule interval to be inserted into DB can be set from the admin panel: `<admin_url>/admin/system_config/edit/section/system/`

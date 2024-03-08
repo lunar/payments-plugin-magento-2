@@ -13,6 +13,7 @@ define(
                 defaults: {
                     template: 'Lunar_Payment/payment/lunarpaymenthosted',
                     checkoutConfig: window.checkoutConfig.lunarpaymenthosted,
+                    methodName: 'lunarpaymenthosted',
                 },
             }
         );

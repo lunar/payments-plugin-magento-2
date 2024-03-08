@@ -7,7 +7,6 @@ use Psr\Log\LoggerInterface;
 use Magento\Store\Model\ScopeInterface;
 use Magento\Framework\App\Response\Http;
 use Magento\Sales\Model\OrderRepository;
-use Magento\Framework\App\Action\Context;
 use Magento\Framework\App\ActionInterface;
 use Magento\Framework\Webapi\Rest\Request;
 use Magento\Framework\App\RequestInterface;
@@ -34,6 +33,7 @@ use GuzzleHttp\Exception\GuzzleException;
 
 use Lunar\Payment\Model\Ui\ConfigProvider;
 use Lunar\Payment\Model\Adminhtml\Source\CaptureMode;
+use Lunar\Payment\Setup\Patch\Data\AddNewOrderStatusPatch;
 
 /**
  * Controller responsible to manage MobilePay payments
@@ -46,7 +46,6 @@ class MobilePayPayment implements ActionInterface
     private $scopeConfig;
     private $orderRepository;
     private $jsonFactory;
-    private $requestInterface;
     private $redirect;
     private $redirectFactory;
     private $response;
@@ -67,7 +66,6 @@ class MobilePayPayment implements ActionInterface
     private $orderId = null;
     private array $args = [];
     private string $referer = '';
-    private string $orderBaseUrl = '';
     private bool $beforeOrder = true;
     private string $authorizationId = '';
 
@@ -97,7 +95,6 @@ class MobilePayPayment implements ActionInterface
         $this->scopeConfig            = $scopeConfig;
         $this->orderRepository        = $orderRepository;
         $this->jsonFactory            = $jsonFactory;
-        $this->requestInterface       = $requestInterface;
         $this->redirect               = $redirect;
         $this->redirectFactory        = $redirectFactory;
         $this->response               = $response;
@@ -132,9 +129,9 @@ class MobilePayPayment implements ActionInterface
             $this->args['custom'] = $configData['custom'];
 
             /**
-* 
- * Set order Id instead of quote id, when after_order flow 
-*/
+             * 
+             * Set order Id instead of quote id, when after_order flow 
+             */
             unset($this->args['custom']['quoteId']);
             $this->args['custom'] = array_merge(['orderId' => $this->order->getIncrementId()], $this->args['custom']);
 
@@ -179,9 +176,9 @@ class MobilePayPayment implements ActionInterface
              */
 
             /**
-* 
- * Update info on order payment 
-*/
+             * 
+             * Update info on order payment 
+             */
             $this->setTxnIdOnOrderPayment();
             $this->updateLastOrderStatusHistory();
 
@@ -190,17 +187,8 @@ class MobilePayPayment implements ActionInterface
                 // the order state will be changed after invoice creation
                 $this->createInvoiceForOrder();
             } else {
-                /**
-                 * @see https://magento.stackexchange.com/questions/225524/magento-2-show-pending-payment-order-in-store-front/280227#280227
-                 * Important note for Pending Payments
-                 * If you have a "pending payment" status order,
-                 * Magento 2 will cancel the order automatically after 8 hours if the payment status doesn't change.
-                 * To change that, go to Stores > Configuration > Sales > Order Cron Settings
-                 * and change the Lifetime to a greater value.
-                 *
-                 * If pending_payment orders not show in front, @see https://magento.stackexchange.com/a/225531/100054
-                 */
-                $this->order->setState(Order::STATE_PENDING_PAYMENT)->setStatus(Order::STATE_PENDING_PAYMENT);
+                $this->order->setState(Order::STATE_PROCESSING)
+                        ->setStatus(AddNewOrderStatusPatch::ORDER_STATUS_PAYMENT_RECEIVED_CODE);
             }
 
             $this->order->save();
@@ -217,7 +205,8 @@ class MobilePayPayment implements ActionInterface
         /**
          * Redirect to error page if response is iframe & checkout mode is after_order
          */
-        if (!$this->beforeOrder
+        if (
+            !$this->beforeOrder
             && isset($response['data']['type'])
             && ($response['data']['type'] === 'iframe')
         ) {
@@ -245,9 +234,9 @@ class MobilePayPayment implements ActionInterface
         $orderPayment->save();
 
         /**
-* 
- * Manually insert transaction if after_order & delayed mode. 
-*/
+         * 
+         * Manually insert transaction if after_order & delayed mode. 
+         */
         if (!$this->beforeOrder && !$this->isInstantMode) {
             $this->insertNewTransactionForPayment($orderPayment);
         }
@@ -278,9 +267,9 @@ class MobilePayPayment implements ActionInterface
         $statusHistories = $this->order->getStatusHistoryCollection()->toArray()['items'];
 
         /**
-* 
- * Get only last created history 
-*/
+         * 
+         * Get only last created history 
+         */
         $orderHistory = $statusHistories[0] ?? null;
 
         if (!$orderHistory) {
@@ -291,10 +280,10 @@ class MobilePayPayment implements ActionInterface
 
 
         /**
-* 
+         * 
          *
- * @var \Magento\Sales\Model\Order\Status\History $historyItem 
-*/
+         * @var \Magento\Sales\Model\Order\Status\History $historyItem 
+         */
         $historyItem = $this->orderStatusRepository->get($orderHistory['entity_id']);
 
 
@@ -303,9 +292,9 @@ class MobilePayPayment implements ActionInterface
         }
 
         /**
-* 
- * Delete last order status history if conditions met. 
-*/
+         * 
+         * Delete last order status history if conditions met. 
+         */
         if (!$this->beforeOrder) {
             if ($this->isInstantMode) {
                 $historyItem->delete();
@@ -321,9 +310,9 @@ class MobilePayPayment implements ActionInterface
                 );
 
                 /**
-* 
- * The price will be displayed in base currency. 
-*/
+                 * 
+                 * The price will be displayed in base currency. 
+                 */
                 $commentContentModified = 'Authorized amount of ' . $formattedPrice . '. Transaction ID: "' . $this->authorizationId . '".';
                 $historyItem->setIsCustomerNotified(0); // @TODO check this (is notified? should we notify?)
             }
@@ -360,9 +349,9 @@ class MobilePayPayment implements ActionInterface
             $returnUrl = $this->referer;
         } else {
             /**
-* 
- * Checkout payment step url 
-*/
+             * 
+             * Checkout payment step url 
+             */
             $returnUrl = $this->redirect->getRefererUrl() . '/#payment'; // or $this->redirect->getRedirectUrl();
         }
 
@@ -479,22 +468,22 @@ class MobilePayPayment implements ActionInterface
         $this->saveHintsOnOrder();
 
         switch ($challenge['type']) {
-        case 'fetch':
-        case 'poll':
-            return [];
+            case 'fetch':
+            case 'poll':
+                return [];
 
-        case 'redirect':
-            $response['type'] = $challenge['type'];
-            // store hints for this order for 30 minutes
-            return $response;
+            case 'redirect':
+                $response['type'] = $challenge['type'];
+                // store hints for this order for 30 minutes
+                return $response;
 
-        case 'iframe':
-        case 'background-iframe':
-            $response['type'] = $challenge['type'];
-            return $response;
+            case 'iframe':
+            case 'background-iframe':
+                $response['type'] = $challenge['type'];
+                return $response;
 
-        default:
-            return $this->error('Unknown challenge type: ' . $challenge['type']);
+            default:
+                return $this->error('Unknown challenge type: ' . $challenge['type']);
         }
 
         return $response;
@@ -525,14 +514,11 @@ class MobilePayPayment implements ActionInterface
         $this->logger->debug("Calling $path with hints: " . json_encode($this->args['hints'] ?? [], JSON_PRETTY_PRINT));
 
         /**
-* 
- * Unset some unnecessary args 
-*/
+         * Unset some unnecessary args 
+         */
         unset(
             $this->args['title'],
-            $this->args['locale'],
             $this->args['checkoutMode'],
-            $this->args['paymentMethod'],
             $this->args['amount']['decimal']
         );
 
@@ -570,8 +556,8 @@ class MobilePayPayment implements ActionInterface
         try {
             $guzzleClient = new GuzzleClient(
                 [
-                'base_uri' => self::REMOTE_URL,
-                'allow_redirects' => true,
+                    'base_uri' => self::REMOTE_URL,
+                    'allow_redirects' => true,
                 ]
             );
 
@@ -672,15 +658,15 @@ class MobilePayPayment implements ActionInterface
     private function getStoreConfigValue($configKey)
     {
         /**
-* 
- * This is not imperative to be used. It works even without it 
-*/
+         * 
+         * This is not imperative to be used. It works even without it 
+         */
         $storeId = $this->storeManager->getStore()->getId();
 
         /**
-* 
- * "path" is composed based on etc/adminhtml/system.xml as "section_id/group_id/field_id" 
-*/
+         * 
+         * "path" is composed based on etc/adminhtml/system.xml as "section_id/group_id/field_id" 
+         */
         $configPath = 'payment/' . $this->mobilePayCode . '/' . $configKey;
 
         return $this->scopeConfig->getValue(

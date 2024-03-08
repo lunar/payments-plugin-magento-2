@@ -20,9 +20,10 @@ define(
                     template: '',
                     checkoutConfig: {},
                     redirectAfterPlaceOrder: false,
-                    controllerURL: "lunar/index/HostedCheckout",
+                    controllerURL: "lunar/index/LunarRedirect",
                     logger: window.LunarLoggerHosted,
                     paymentButtonSelector: '.action.primary.checkout',
+                    methodName: '',
                 },
 
                 redirectToPayment: function () {
@@ -33,10 +34,8 @@ define(
                     let self = this;
 
                     let paymentConfig = this.checkoutConfig.config;
-                    paymentConfig.test = 'test' === paymentConfig.test;
 
-                    let isMobilePay = 'lunarmobilepayhosted' === paymentConfig.paymentMethod;
-                    self.logger.setContext(paymentConfig, Jquery, MageUrl, isMobilePay);
+                    self.logger.setContext(paymentConfig, Jquery, MageUrl, this.methodName);
 
                 /** Change default behavior after order. */
                 self.afterPlaceOrder = async function () {
@@ -60,7 +59,7 @@ define(
                 },
 
                 submitError: function (errorMessage) {
-                    Jquery(`#${this.checkoutConfig.config.custom.paymentMethod}_messages`).prepend(errorMessage).show()
+                    Jquery(`#${this.methodName}_messages`).prepend(errorMessage).show()
                 },
 
                 disablePaymentButton: function () {
@@ -71,10 +70,10 @@ define(
                     Jquery(this.paymentButtonSelector).prop('disabled', false);
                 },
             
-            /** Returns send check to info */
-            getMailingAddress: function () {
-                return window.checkoutConfig.payment.checkmo.mailingAddress;
-            },
+                /** Returns send check to info */
+                getMailingAddress: function () {
+                    return window.checkoutConfig.payment.checkmo.mailingAddress;
+                },
 
                 getDescription: function () {
                     return this.checkoutConfig.description;

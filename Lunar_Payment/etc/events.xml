@@ -11,8 +11,6 @@
     <event name="checkout_submit_all_after">
         <observer name="lunar_checkout_submit_all_after" instance="Lunar\Payment\Observer\CheckoutAllSubmitAfterObserver"/>
         <observer name="lunar_mobilepay_checkout_submit_all_after" instance="Lunar\Payment\Observer\MobilePayCheckoutAllSubmitAfterObserver"/>
-
-        <observer name="lunar_hosted_checkout_submit_all_after" instance="Lunar\Payment\Observer\HostedCheckoutAllSubmitAfterObserver"/>
     </event>
 
     <event name="sales_order_payment_void">
